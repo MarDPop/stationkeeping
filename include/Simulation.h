@@ -2,8 +2,9 @@
 
 #include <array>
 #include <vector>
+#include "OrbitalDynamics.h"
+#include "Math.h"
 #include "Matrix.h"
-#include "Dynamics.h"
 #include "Ode.h"
 #include <thread>
 
@@ -17,23 +18,9 @@ struct Section {
 	EarthMoonSun* dynamics;
 	static const double SECTION_DAYS;
 	
-	Section(EarthMoonSun* f) {
-		this->dynamics = f;
-		this->ode = ODE_RK4<6>();
-		this->ode.set_dynamics(f);
-		this->ode.recording.set_record_interval(100);
-		this->ode.set_timestep(10);
-	}
+	Section(EarthMoonSun* f);
 	
-	void compute_states(){
-		this->ode.recording.clear();
-		this->ode.set_time(this->t_start);
-		this->ode.run(this->initial_state,this->t_final);
-		this->times = this->ode.recording.get_times();
-		this->states = this->ode.recording.get_states();
-		this->times.push_back(ode.get_time());
-		this->states.push_back(ode.get_state());
-	}
+	void compute_states();
 
     void target(const std::array<double,6>& xp);
 
@@ -46,9 +33,7 @@ struct Section {
     static double calcDV(std::vector<Section>& sections);
 };
 
-const double Section::SECTION_DAYS = 3;
-
-std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd){
+inline std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd){
 	std::array<double,6> x = cr3bp->convert_state_to_inertial(state_guess);
 	
 	const double xL1 = cr3bp->getL1() - cr3bp->mu;
@@ -87,8 +72,8 @@ std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::ar
 	
 	return x;
 }
-
-double minimizeDV_Gradient(std::vector<Section>& sections){
+/*
+inline double minimizeDV_Gradient(std::vector<Section>& sections){
 	const double deltaX = 1;
 	const double deltaX_half = deltaX*0.5;
 	const double deltaT = 120;
@@ -245,3 +230,4 @@ double minimizeDV_Gradient(std::vector<Section>& sections){
 	
 	return err;
 }
+*/

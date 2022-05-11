@@ -1,9 +1,10 @@
-#include "Dynamics.h"
-#include "ODE.h"
-#include "Math.h"
-#include "Util.h"
-#include "Matrix.h"
-#include "Simulation.h"
+#include "../include/OrbitalElements.h"
+#include "../include/OrbitalDynamics.h"
+#include "../include/ODE.h"
+#include "../include/Math.h"
+#include "../include/Util.h"
+#include "../include/Matrix.h"
+#include "../include/Simulation.h"
 #include <iostream>
 #include <iomanip>
 #include <fstream>

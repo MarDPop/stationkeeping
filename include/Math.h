@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __MATH__H
+#define __MATH__H
 
 #include "string.h"
 #include <array>
@@ -6,26 +7,29 @@
 #include <cmath>
 #include <sstream>
 
+#define TWOPI 6.283185307179586476925286766559
+#define DEG2RAD 1.7453292519943295769236907685e-2
+
 namespace Math {
 	
 	inline double SQ(const double& x) {
 		return x*x;
 	}
 	
-	inline double CUBE(const double& x) {
+	inline double CUB(const double& x) {
 		return x*x*x;
 	}
 
-	double dot(const std::array<double,3>& u, const std::array<double,3>& v) {
+	inline double dot(const std::array<double,3>& u, const std::array<double,3>& v) {
 		return u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
 	}
 	
-	std::array<double,3> cross(const std::array<double,3>& u, const std::array<double,3>& v) {
+	inline std::array<double,3> cross(const std::array<double,3>& u, const std::array<double,3>& v) {
 		std::array<double,3> w = {u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]};
 		return w;
 	}
 	
-	std::array< std::array<double,3>, 3 > transpose(const std::array< std::array<double,3>, 3 >& A) {
+	inline std::array< std::array<double,3>, 3 > transpose(const std::array< std::array<double,3>, 3 >& A) {
 		std::array< std::array<double,3>, 3 > AT;
 		for(std::size_t i = 0;i < 3; i++){
 			for(std::size_t j = 0;j < 3; j++){
@@ -35,7 +39,7 @@ namespace Math {
 		return AT;
 	}
 	
-	std::array<double,3> mult(const std::array< std::array<double,3>, 3 >& A, const std::array<double,3>& x) {
+	inline std::array<double,3> mult(const std::array< std::array<double,3>, 3 >& A, const std::array<double,3>& x) {
 		std::array<double,3> y;
 		y[0] = dot(A[0],x);
 		y[1] = dot(A[1],x);
@@ -43,7 +47,7 @@ namespace Math {
 		return y;
 	}
 	
-	double** eye(const std::size_t&n) {
+	inline double** eye(const std::size_t&n) {
 		std::size_t bytes = n*sizeof(double);
 		double** I = new double*[n];
 		for(std::size_t i = 0;i < n; i++){
@@ -54,7 +58,7 @@ namespace Math {
 		return I;
 	}
 	
-	double** zeros(const std::size_t&n) {
+	inline double** zeros(const std::size_t&n) {
 		std::size_t bytes = n*sizeof(double);
 		double** A = new double*[n];
 		for(std::size_t i = 0;i < n; i++){
@@ -64,7 +68,7 @@ namespace Math {
 		return A;
 	}
 	
-	double** copy(double** A,const std::size_t&n) {
+	inline double** copy(double** A,const std::size_t&n) {
 		double** B = new double*[n];
 		for(std::size_t i = 0;i < n; i++){
 			double* a = A[i];
@@ -77,28 +81,28 @@ namespace Math {
 		return B;
 	}
 	
-	void clear(double** A, const std::size_t& n) {
+	inline void clear(double** A, const std::size_t& n) {
 		std::size_t bytes = n*sizeof(double);
 		for(std::size_t i = 0;i < n; i++){
 			memset(A[i], 0, bytes);
 		}
 	}
 	
-	void del(double** A, const std::size_t& n){
+	inline void del(double** A, const std::size_t& n){
 		for(std::size_t i = 0;i < n; i++){
 			delete[] A[i];
 		}
 		delete[] A;
 	}
 	
-	void identity(double** A, const std::size_t& n){
+	inline void identity(double** A, const std::size_t& n){
 		clear(A,n);
 		for(std::size_t i = 0;i < n; i++){
 			A[i][i] = 1;
 		}
 	}
 	
-	double dot(const double* u, const double* v, const std::size_t& N) {
+	inline double dot(const double* u, const double* v, const std::size_t& N) {
 		double sum = 0;
 		for(std::size_t i = 0; i < N; i++){
 			sum += u[i]*v[i];
@@ -106,7 +110,7 @@ namespace Math {
 		return sum;
 	}
 
-	void mult(double** A, double** B, double** C, const std::size_t& n) {
+	inline void mult(double** A, double** B, double** C, const std::size_t& n) {
 		for (std::size_t i = 0; i < n; i++) {
 			double* A_row = A[i];
 			double* C_row = C[i];
@@ -119,7 +123,7 @@ namespace Math {
         }
 	}
 	
-	void multMat(double **A, double **B, double **C, const uint_fast16_t& n){
+	inline void multMat(double **A, double **B, double **C, const uint_fast16_t& n){
 		clear(C,n);
         uint_fast16_t i,j,k;
         for (i = 0; i < n; i++) {
@@ -135,7 +139,7 @@ namespace Math {
         }
     }
 	
-	void mult(double** A, double b, double** C, const std::size_t& n) {
+	inline void mult(double** A, double b, double** C, const std::size_t& n) {
 		for (std::size_t i = 0; i < n; i++) {
 			double* A_row = A[i];
 			double* C_row = C[i];
@@ -145,7 +149,7 @@ namespace Math {
         }
 	}
 	
-	void mult(double** A, double b, const std::size_t& n) {
+	inline void mult(double** A, double b, const std::size_t& n) {
 		for (std::size_t i = 0; i < n; i++) {
 			double* A_row = A[i];
             for (std::size_t j = 0; j < n; j++) {
@@ -154,7 +158,7 @@ namespace Math {
         }
 	}
 	
-	void add(double** A, double** B, double** C, const std::size_t& n) {
+	inline void add(double** A, double** B, double** C, const std::size_t& n) {
 		for (std::size_t i = 0; i < n; i++) {
 			double* A_row = A[i];
 			double* B_row = B[i];
@@ -165,7 +169,7 @@ namespace Math {
         }
 	}
 	
-	void add(double** A, double** B, const std::size_t& n) {
+	inline void add(double** A, double** B, const std::size_t& n) {
 		for (std::size_t i = 0; i < n; i++) {
 			double* A_row = A[i];
 			double* B_row = B[i];
@@ -176,7 +180,7 @@ namespace Math {
 	}
 	
 	template<std::size_t N>
-	std::array< std::array<double,N>, N> mult(const std::array< std::array<double,N>, N>& A, const std::array< std::array<double,N>, N>& B) {
+	inline std::array< std::array<double,N>, N> mult(const std::array< std::array<double,N>, N>& A, const std::array< std::array<double,N>, N>& B) {
 		std::array< std::array<double,N>, N> C;
 		for (std::size_t i = 0; i < N; i++) {
             for (std::size_t j = 0; j < N; j++) {
@@ -189,7 +193,7 @@ namespace Math {
 		return C;
 	}
 	
-	void mult(double* A, double* B, double* C, const std::size_t& n) {
+	inline void mult(double* A, double* B, double* C, const std::size_t& n) {
 		memset(C, 0, n*sizeof(double));
 		for (std::size_t i = 0; i < n; i++) {
 			std::size_t row = i*n;
@@ -202,7 +206,7 @@ namespace Math {
         }
 	}
 	
-	uint_fast32_t lowerbound(const double* xs, const double& x, const uint_fast32_t& n) {
+	inline uint_fast32_t lowerbound(const double* xs, const double& x, const uint_fast32_t& n) {
 		uint_fast32_t lo = 0;
 		uint_fast32_t hi = n-1;
 		uint_fast32_t mid = (lo+hi)/2;
@@ -217,7 +221,7 @@ namespace Math {
 		return lo;
 	}	
 	
-	void LUPSolve(double** A, double* b, const std::size_t& n) {
+	inline void LUPSolve(double** A, double* b, const std::size_t& n) {
         std::size_t i, j, k, i_max; 
         double max,absA;
 
@@ -272,7 +276,7 @@ namespace Math {
         }
     }
 	
-	void triDiagonalSolve(double a[], double b[], double c[], double x[], const uint_fast16_t& nDiag){
+	inline void triDiagonalSolve(double a[], double b[], double c[], double x[], const uint_fast16_t& nDiag){
         int i1 = 0;
         int i = 1;
         // forward replace
@@ -290,7 +294,7 @@ namespace Math {
         }
     }
 	
-	void LTS(double ** L, double * b, const uint_fast16_t & n){
+	inline void LTS(double ** L, double * b, const uint_fast16_t & n){
         //lower triangular solver by forward substitution
         for(uint_fast16_t i = 0; i < n;i++){
             for(uint_fast16_t j = 0; j < i;j++){
@@ -300,7 +304,7 @@ namespace Math {
         }
     }
 
-    void UTS(double ** U, double * b, const uint_fast16_t & n){
+    inline void UTS(double ** U, double * b, const uint_fast16_t & n){
         //lower triangular solver by backward substitution
         for(uint_fast16_t i = n-1; i != 0; i--){
             for(uint_fast16_t j = i+1; j < n; j++){
@@ -310,7 +314,7 @@ namespace Math {
         }
     }
     
-    std::array<double**,2> getLU(double** A, const uint_fast16_t& n){
+    inline std::array<double**,2> getLU(double** A, const uint_fast16_t& n){
         // returns L and U
         double** L = eye(n);
         double** U = copy(A,n);
@@ -331,7 +335,7 @@ namespace Math {
         return std::array<double**,2>{L,U};
     }
 	
-	double* cholesky(double* A, const uint_fast16_t& n) {
+	inline double* cholesky(double* A, const uint_fast16_t& n) {
         double* L = (double*)calloc(n * n, sizeof(double));
 
         for (int i = 0; i < n; i++) {
@@ -354,7 +358,7 @@ namespace Math {
     
     constexpr int C[11][11] = {{1},{1,1},{1,2,1},{1,3,3,1},{1,4,6,4,1},{1,5,10,10,5,1},{1,6,15,20,15,6,1},{1,7,21,35,35,21,7,1},{1,8,28,56,70,56,28,8,1},{1,9,36,84,126,126,36,9,1},{1,10,45,120,210,252,210,120,45,10,1}};
     
-	double generalBinomial(double alpha, int k){
+	inline double generalBinomial(double alpha, int k){
         // this can be further optimized for half values required by legendre
         double res = 1;
         for (int i = 1; i <= k; ++i)
@@ -362,7 +366,7 @@ namespace Math {
         return res;
     }
     
-    unsigned long binomial(unsigned long& n, unsigned long& k) {
+    inline unsigned long binomial(unsigned long& n, unsigned long& k) {
         unsigned long c = 1, i;
 
         if (k > n-k) // take advantage of symmetry
@@ -378,7 +382,7 @@ namespace Math {
         return c;
     }
     
-    int combination(const int& n, const int& k) {
+    inline int combination(const int& n, const int& k) {
         if(n <= 10) {
             return C[n][k];
         }
@@ -396,7 +400,7 @@ namespace Math {
         return num/den;
     }
 	
-	double legendrePoly(const int n, const double x){
+	inline double legendrePoly(const int n, const double x){
         if (n == 0)
             return 1;
         if (n == 1)
@@ -422,7 +426,7 @@ namespace Math {
         return (1<<n) * sums;
     }
     
-    double assocLegendrePoly(int l, int m, double x){
+    inline double assocLegendrePoly(int l, int m, double x){
         int sums = 0;
         for (int k = m; k <= l; k++) {
             int prod = k;
@@ -436,7 +440,7 @@ namespace Math {
             return -1 * (1<<l) * pow((1-x*x),m*0.5) *sums;
     }
 	
-	double evalPoly(const double coef[], const int&n, const double& x){
+	inline double evalPoly(const double coef[], const int&n, const double& x){
         int idx = n-1;
         double y = coef[idx];
         while(idx-- > 0){
@@ -445,7 +449,7 @@ namespace Math {
         return y;
     }
 	
-	void polyFit(double* x, double* y, const uint_fast16_t& n, const uint_fast16_t& deg, double* coef){
+	inline void polyFit(double* x, double* y, const uint_fast16_t& n, const uint_fast16_t& deg, double* coef){
         const uint_fast16_t m = deg+1;
         const uint_fast16_t mm = m+m;
         uint_fast16_t i,j;
@@ -483,7 +487,7 @@ namespace Math {
         delete[] sums;
     }
     
-    void weightedPolyFit(const double x[], const double y[], const double w[], const uint_fast16_t& n, const uint_fast16_t& deg, double* coef){
+    inline void weightedPolyFit(const double x[], const double y[], const double w[], const uint_fast16_t& n, const uint_fast16_t& deg, double* coef){
         const uint_fast16_t m = deg+1;
         const uint_fast16_t mm = m+m;
         uint_fast16_t i,j;
@@ -524,3 +528,5 @@ namespace Math {
     }
 	
 }
+
+#endif

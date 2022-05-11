@@ -1,5 +1,25 @@
 #include "../include/Simulation.h"
 
+const double Section::SECTION_DAYS = 3;
+
+Section::Section(EarthMoonSun* f){
+    this->dynamics = f;
+    this->ode = ODE_RK4<6>();
+    this->ode.set_dynamics(f);
+    this->ode.recording.set_record_interval(100);
+    this->ode.set_timestep(10);
+}
+
+void Section::compute_states() {
+    this->ode.recording.clear();
+    this->ode.set_time(this->t_start);
+    this->ode.run(this->initial_state,this->t_final);
+    this->times = this->ode.recording.get_times();
+    this->states = this->ode.recording.get_states();
+    this->times.push_back(ode.get_time());
+    this->states.push_back(ode.get_state());
+}
+
 void Section::target(const std::array<double,6>& xp){
 	this->compute_states();
     this->compute_STM();
@@ -74,14 +94,17 @@ void Section::compute_STM(){
    
 }
 
-
-
 void Section::minimizeDX(std::vector<Section>& sections){
     std::cout << "patching...\n";
     const uint_fast16_t nSections = sections.size(); 
-    for(int iter = 0; iter < 30; iter++){
-        for (uint_fast16_t sId = 0; sId < nSections; sId++) {
+    for(int iter = 0; iter < 20; iter++){
+        std::cout << "Iteration: " << iter << std::endl;
 
+        for (uint_fast16_t sId = 0; sId < nSections; sId++) {
+            sections[sId].target(sections[sId+1].initial_state);
+        }
+
+        for (uint_fast16_t sId = 1; sId < nSections; sId++) {
             sections[sId].t_start = sections[sId-1].t_final;
         }
     }

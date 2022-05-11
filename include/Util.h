@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sstream>
+#include <fstream>
 
 namespace Util {
 	
@@ -8,7 +9,7 @@ namespace Util {
 	constexpr int JULIAN_DAY = 86400;
 	constexpr double SIDREAL_DAY = 86164.09054;
 	
-	void writeCSV(const std::vector< std::vector<double> > & data, const std::string & filename) {
+	inline void writeCSV(const std::vector< std::vector<double> > & data, const std::string & filename) {
         std::ofstream myfile;
         myfile.open (filename);
         for(std::size_t i = 0; i < data.size();i++){
@@ -22,7 +23,7 @@ namespace Util {
         myfile.close();
     }
     
-    std::vector<std::string> split(const std::string& s, const char& delimiter) {
+    inline std::vector<std::string> split(const std::string& s, const char& delimiter) {
         std::vector<std::string> tokens;
         std::string token;
         std::istringstream tokenStream(s);
@@ -32,7 +33,7 @@ namespace Util {
         return tokens;
     }
 	
-	int getJDNFromGregorianYMD(int y, int m, int d){
+	inline int getJDNFromGregorianYMD(int y, int m, int d){
         int m12 = (m - 14)/12;
         return  (1461*(y + 4800 + m12))/4 +
                 (367*( m - 2 - 12 * m12 ))/12 -
@@ -40,7 +41,7 @@ namespace Util {
                 d - 32075;
     }
 	
-	double getJDFromUTC(int y, int m, int d, int hour, int min, double sec){
+	inline double getJDFromUTC(int y, int m, int d, int hour, int min, double sec){
         int jdn = getJDNFromGregorianYMD(y,m,d);
 		double day_sec = (hour - 12)*3600 + min*60 + sec;
 		return jdn + day_sec/86400.0;
