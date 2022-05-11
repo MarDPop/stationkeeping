@@ -1,0 +1,1 @@
+rename build.txt to build.bat, then run the batch file.
