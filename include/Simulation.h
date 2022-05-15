@@ -30,6 +30,8 @@ struct Section {
 
     static void minimizeDV(std::vector<Section>& sections);
 
+    static void smooth(std::vector<Section>& sections);
+
     static double calcDV(std::vector<Section>& sections);
 };
 
@@ -50,8 +52,6 @@ inline std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const 
 	
 	double dt = 0.001*86400;
 	double dL1dt = (sqrt(Math::dot(L1_1,L1_1)) - sqrt(Math::dot(L1_0,L1_0)))*xL1/dt;
-	
-	//std::cout << jd << ": " << dL1 << std::endl;
 	
 	std::array< std::array<double,3>, 3> CS = {frame[1],frame[2],frame[3]};
 	std::array< std::array<double,3>, 3> CST = Math::transpose(CS);

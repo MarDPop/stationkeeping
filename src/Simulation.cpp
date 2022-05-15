@@ -1,6 +1,6 @@
 #include "../include/Simulation.h"
 
-const double Section::SECTION_DAYS = 3;
+const double Section::SECTION_DAYS = 1;
 
 Section::Section(EarthMoonSun* f){
     this->dynamics = f;
@@ -38,12 +38,13 @@ void Section::target(const std::array<double,6>& xp){
 
     Matrix<4,3> LT = L.get_transpose();
     Matrix<3,3> A = L*LT;
-    Vector<4> u = LT*(MatrixX::invert(A)*b);
+    Matrix<3,3>::solve(A,b);
+	Vector<4> u = LT*b;
 
-    this->initial_state[3] += 0.9*u[0];
-    this->initial_state[4] += 0.9*u[1];
-    this->initial_state[5] += 0.9*u[2];
-    this->t_final += 0.2*u[3];	
+    this->initial_state[3] += 0.2*u[0];
+    this->initial_state[4] += 0.2*u[1];
+    this->initial_state[5] += 0.2*u[2];
+    this->t_final += 0.1*u[3];	
 }
 
 void Section::compute_STM(){		
@@ -100,7 +101,7 @@ void Section::minimizeDX(std::vector<Section>& sections){
     for(int iter = 0; iter < 20; iter++){
         std::cout << "Iteration: " << iter << std::endl;
 
-        for (uint_fast16_t sId = 0; sId < nSections; sId++) {
+        for (uint_fast16_t sId = 0; sId < nSections - 1; sId++) {
             sections[sId].target(sections[sId+1].initial_state);
         }
 
@@ -112,8 +113,6 @@ void Section::minimizeDX(std::vector<Section>& sections){
 	
 	std::cout << "patched.\n";
 }
-
-
 
 void Section::minimizeDV(std::vector<Section>& sections){
     const uint_fast16_t nSections = sections.size();
@@ -234,6 +233,15 @@ void Section::minimizeDV(std::vector<Section>& sections){
 	for (uint_fast16_t section = 0; section < nSections-1; section++) {
 		sections[section].t_final = sections[section+1].t_start;
 	}	
+}
+
+
+void Section::smooth(std::vector<Section>& sections){
+    
+    for (uint_fast16_t section = 0; section < nSections; section++) {
+		sections[section].compute_states();
+		sections[section].compute_STM();
+	}
 }
 
 double Section::calcDV(std::vector<Section>& sections){

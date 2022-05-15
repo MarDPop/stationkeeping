@@ -122,7 +122,7 @@ void test(const std::size_t& nSections) {
 	printOut(dynamics,sections,"test_orbit");
 
 	double dvEnd = nSections*0.01;
-	const int MAX_ITER = 30;
+	const int MAX_ITER = 0;
 	for(int iter = 0; iter < MAX_ITER; iter++) {
 
 		Section::minimizeDX(sections);
@@ -136,9 +136,27 @@ void test(const std::size_t& nSections) {
 		}
 
 	}
+
+	Section::minimizeDX(sections);
 	
 	std::cout << "printing" << std::endl;
 	printOut(dynamics,sections,"test_orbit2");
+}
+
+void test2(){
+	
+	CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,385000);
+	
+	ODE_RK4<6> ode = ODE_RK4<6>();
+	ode.set_dynamics(&cr3bp);
+	std::array<double,6> x = cr3bp.getHaloInitialState_3rd(10000,0,120*86400,1);
+	ode.recording.set_record_interval(0.01);
+	ode.set_timestep(0.0001);
+	
+	ode.run(x,4);
+	
+	printOut(ode.recording,"test_orbit3");
+	std::cout << "done";
 }
 
 int main(int argc, char* argv[]) {

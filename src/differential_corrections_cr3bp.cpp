@@ -1,6 +1,7 @@
-#include "Dynamics.h"
-#include "ODE.h"
-#include "Util.h"
+#include "../include/OrbitalDynamics.h"
+#include "../include/OrbitalElements.h"
+#include "../include/ODE.h"
+#include "../include/Util.h"
 #include <iostream>
 #include <fstream>
 #include <string>
