@@ -1,9 +1,7 @@
 #include "../include/Simulation.h"
 
-
-void test(const std::size_t& nSections) {
-	Simulation sim;
-	sim.run(nSections);
+void test(const int& nSections) {
+	OrbitComputation::run_full_emphemeris(nSections);
 	
 }
 
