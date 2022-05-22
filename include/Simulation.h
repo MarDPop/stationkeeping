@@ -8,6 +8,34 @@
 #include "Ode.h"
 #include <thread>
 
+class Simulation {
+
+	double julian_day;
+
+public:
+
+	/**
+	 * @brief Get the cr3bp halo object
+	 * 
+	 * @param dt 
+	 * @param Az 
+	 * @param sma 
+	 * @param tol 
+	 * @param mu1 
+	 * @param mu2 
+	 * @return std::vector< std::array<double,6> > 
+	 */
+	static std::vector< std::array<double,6> > get_cr3bp_halo(const double& dt, const double& Az, const double& sma, const double& tol, const double& mu1, const double& mu2);
+
+	/**
+	 * @brief 
+	 * 
+	 * @param nSections 
+	 */
+	void run_full_emphemeris(const std::size_t& nSections);
+
+};
+
 struct Section {
 	std::array<double,6> initial_state;
 	double t_start, t_final;

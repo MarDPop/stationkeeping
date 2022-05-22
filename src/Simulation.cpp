@@ -1,4 +1,196 @@
 #include "../include/Simulation.h"
+#include "../include/ODE.h"
+#include "../include/OrbitalDynamics.h"
+#include "../include/OrbitalElements.h"
+
+#define MAX_HALO_ITERATIONS 10
+
+std::vector< std::array<double,6> > get_cr3bp_halo( const double& dt, const double& Az, const double& sma, const double& tol = 1e-10,
+                                                    const double& mu1 = OrbitalElements::EARTH_MU, const double& mu2 = OrbitalElements::MOON_MU) {
+
+    CR3BP* dynamics = new CR3BP(mu1,mu2,sma);
+	
+	double mean_motion = sqrt((mu1 + mu2)/(sma*sma*sma));
+    double f = sma*mean_motion;
+    tol /= f;
+	double recording_interval = dt * mean_motion; 
+	
+	ODE_RK4<6> ode = ODE_RK4<6>();
+	ode.set_dynamics(dynamics);
+	ode.recording.set_record_interval(recording_interval);
+	ode.set_timestep(1e-6);
+	ode.stop = [](const std::array<double,6>& x,const double& t){
+		return x[1] < 0;
+	};
+	
+	std::array<double,6> x = initial_state;
+	
+	std::cout << "Running" <<std::endl;
+	double A00,A11,A10,A01,dx0,dz0,dyd0;
+	double** A = Math::zeros(6);
+	double** STM = Math::zeros(6);
+	double** dSTM = Math::zeros(6);
+	bool alternate = true;
+	for(int iter = 0; iter < MAX_HALO_ITERATIONS;iter++) {
+		ode.recording.clear();
+		ode.run(x,100);
+		
+		std::array<double,6> xf = ode.get_state();
+		
+		std::array<double,6> dxf = dynamics->get_state_rate(xf,ode.get_time());
+		
+		double dtf = -xf[1]/dxf[1];
+		
+		double x_dot_f = xf[3] + dxf[3]*dtf;
+		double z_dot_f = xf[5] + dxf[5]*dtf;
+		
+		std::cout << "half period x velocity (m/s): " << x_dot_f*f*1e3 << std::endl;
+		std::cout << "half period z velocity (m/s): " << z_dot_f*f*1e3 << std::endl;
+		
+		double e = (fabs(x_dot_f) + fabs(z_dot_f));
+        
+        if (e < tol)
+            break;
+    
+        //Integrate State Transition Matrix
+        Math::identity(STM,6);
+        int n = ode.recording.number_entries()-1;
+        for(int i = 0; i < n;i++) {
+			const std::array<double,6>& xi = ode.recording.get(i);
+			double dt = ode.recording.time_at(i+1) - ode.recording.time_at(i);
+            dynamics->getA(xi,A);
+            Math::mult(A,STM,dSTM,6);
+			Math::mult(dSTM,dt,6);
+            Math::add(STM,dSTM,6);
+		}	
+		dynamics->getA(ode.recording.get(n),A);
+		Math::mult(A,STM,dSTM,6);
+		Math::mult(dSTM,dtf,6);
+		Math::add(STM,dSTM,6);	
+    
+        //Solve for delta intial state
+		
+        double xdd = dxf[3]/xf[4];
+        double zdd = dxf[5]/xf[4];
+    
+        double stepSize = 1/(1+e*5);
+    
+        //alternate between dx0 and dx0 matrices
+        if (alternate) {
+            A00 = STM[3][0] - xdd*STM[1][0];
+            A01 = STM[3][4] - xdd*STM[1][4];
+            A10 = STM[5][0] - zdd*STM[1][0];
+            A11 = STM[5][4] - zdd*STM[1][4];
+            double det = A00*A11 - A10*A01;
+            dx0 = (A01*z_dot_f - A11*x_dot_f)/det;
+            dyd0 = (A10*x_dot_f - A00*z_dot_f)/det;
+            x[0] += stepSize*dx0;
+        } else{
+            A00 = STM[3][2] - xdd*STM[1][2];
+            A01 = STM[3][4] - xdd*STM[1][4];
+            A10 = STM[5][2] - zdd*STM[1][2];
+            A11 = STM[5][4] - zdd*STM[1][4];
+            double det = A00*A11 - A10*A01;
+            dz0 = (A01*z_dot_f - A11*x_dot_f)/det;
+            dyd0 = (A10*x_dot_f - A00*z_dot_f)/det;
+            x[2] += stepSize*dz0;
+		}
+        x[4] += stepSize*dyd0;
+    
+        std::cout << "corrected initial state: " << std::endl;
+		
+		for(int i = 0; i < 6;i++){
+			std::cout << x[i] << " ";
+		}
+		std::cout << std::endl;
+    
+        alternate = !alternate;
+	}
+	
+	Math::del(A,6);
+	Math::del(STM,6);
+	Math::del(dSTM,6);
+	
+	printOut(x);
+	printOut(ode.recording);
+
+}
+
+Simulation::run_full_emphemeris(const std::size_t& nSections) {
+    const double jd0 = Util::getJDFromUTC(2024,4,15,0,0,0);
+	std::cout << jd0 << std::endl;	
+	EarthMoonSun* dynamics = new EarthMoonSun(jd0);
+	
+	std::cout << std::setprecision(12);
+
+	// init sections
+	std::cout << "Initializing Segments" << std::endl;
+	double T = 0;
+	const double dT = Section::SECTION_DAYS*86400;
+	std::vector<Section> sections(nSections,dynamics);
+	for (std::size_t section = 0; section < nSections; section++) { 
+	
+		double jd = jd0 + T/86400.0;
+	
+		std::array<double,3> e = dynamics->earth->getPos(jd);
+		std::array<double,3> m = dynamics->moon->getPos(jd);
+		std::array<double,3> r = {e[0] - m[0],e[1] - m[1],e[2] - m[2]};
+		double sma = sqrt(Math::dot(r,r));
+
+		CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
+		
+		sections[section].initial_state = convert(&cr3bp, dynamics, cr3bp.getHaloInitialState_3rd(10000,0,T,1),jd);
+		sections[section].t_start = T;
+		T += dT;
+		sections[section].t_final = T;
+	}
+	
+	double t_final = T + 3600;
+	
+	double time = 0;
+	std::vector<double> t;
+	std::vector<std::array<double,3> > xE;
+	std::vector<std::array<double,3> > xM;
+	while(time < t_final){
+		double jd_t = jd0 + time/86400;
+		t.push_back(time);
+		xE.push_back(dynamics->earth->getPos(jd_t));
+		xM.push_back(dynamics->moon->getPos(jd_t));
+		time += 3600;
+	}
+
+	std::cout << "Printing OG" << std::endl;
+	
+	printOut(t,xE,"test_earth");
+	printOut(t,xM,"test_moon");
+
+	for (Section& section : sections) { 
+		section.compute_states();
+	}
+	printOut(dynamics,sections,"test_orbit");
+
+	double dvEnd = nSections*0.01;
+	const int MAX_ITER = 0;
+	for(int iter = 0; iter < MAX_ITER; iter++) {
+
+		Section::minimizeDX(sections);
+		
+		Section::minimizeDV(sections);
+		
+		double dv = Section::calcDV(sections);
+		std::cout << "DV: " << dv << std::endl;
+		if(dv < dvEnd){
+			break;
+		}
+
+	}
+
+	Section::minimizeDX(sections);
+	
+	std::cout << "printing" << std::endl;
+	printOut(dynamics,sections,"test_orbit2");
+
+}
 
 const double Section::SECTION_DAYS = 1;
 
