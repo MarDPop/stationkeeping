@@ -8,7 +8,7 @@ NestedCharTable::NestedCharTable(){
 NestedCharTable::NestedCharTable(std::string NAME) : name(NAME){
 }
 
-~NestedCharTable::NestedCharTable(){
+NestedCharTable::~NestedCharTable(){
     for(int i = 0; i < 38;i++){
         delete this->chars[i];
     }
@@ -49,7 +49,7 @@ void Config::convert_name(std::string& name){
     }
 }
 
-static void Config::reset(){
+void Config::reset(){
     Config* config = Config::get_instance();
 
     delete config->index;
@@ -93,7 +93,7 @@ std::string Config::check_param(std::string name) const {
         if( table->chars[name[i]] == NULL ) {
             found = false;
         } else {
-            table = table->[name[i]];
+            table = table->chars[name[i]];
         }
     }
     
@@ -119,6 +119,7 @@ NestedCharTable* Config::get_table(const std::string& name) {
     return table;
 }
 
+template<>
 void Config::add(const std::string& name, double val) {
 
     Config* config = Config::get_instance();
@@ -135,7 +136,7 @@ void Config::add(const std::string& name, double val) {
 void Config::remove(const std::string& name){
     Config* config = Config::get_instance();
 
-    NestedCharTable* table = config->get_table();
+    NestedCharTable* table = config->get_table(name);
 
     switch(table->type) {
         case 0:

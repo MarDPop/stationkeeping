@@ -45,9 +45,11 @@ public:
 	 * @param tol 
 	 * @param mu1 
 	 * @param mu2 
-	 * @return std::vector< std::array<double,6> > 
+	 * @return std::array<double,6> 
 	 */
-	static const std::vector< std::array<double,6> > get_cr3bp_halo(const double& dt, const double& Az, const double& sma, const double& tol, const double& mu1, const double& mu2);
+	static std::array<double,6> get_cr3bp_halo_initial_state(CR3BP* cr3bp, const double& Az, const double& tol);
+
+	static std::vector< std::array<double,6> > get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, const double& dt);
 
 	static void minimizeDX(std::vector<Section>& sections);
 

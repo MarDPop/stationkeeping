@@ -102,15 +102,11 @@ void Section::compute_STM(){
    
 }
 
-const std::vector< std::array<double,6> > OrbitComputation::get_cr3bp_halo( const double& dt, const double& Az, const double& sma, const double& tol = 1e-10,
-                                                    const double& mu1 = OrbitalElements::EARTH_MU, const double& mu2 = OrbitalElements::MOON_MU) {
+std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3bp, const double& Az, const double& tol = 1e-9) {
 
-    CR3BP* cr3bp = new CR3BP(mu1,mu2,sma);
-	
-	double mean_motion = sqrt((mu1 + mu2)/(sma*sma*sma));
-    double f = sma*mean_motion;
+    double f = cr3bp->sma*cr3bp->mean_motion;
     double tolerance = tol / f;
-	double recording_interval = dt * mean_motion; 
+	double recording_interval = 1e-4; 
 	
 	ODE_RK4<6> ode = ODE_RK4<6>();
 	ode.set_dynamics(cr3bp);
@@ -207,9 +203,25 @@ const std::vector< std::array<double,6> > OrbitComputation::get_cr3bp_halo( cons
 	Math::del(A,6);
 	Math::del(STM,6);
 	Math::del(dSTM,6);
-	
-	Util::printOut(ode.recording,"output/cr3bp.orbit");
 
+    return x;
+}
+
+std::vector< std::array<double,6> > get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, double dt, double t_period){
+	dt /= cr3bp->mean_motion; 
+    t_period *= 0.9/cr3bp->mean_motion;
+	
+	ODE_RK4<6> ode = ODE_RK4<6>();
+	ode.set_dynamics(cr3bp);
+	ode.recording.set_record_interval(dt);
+	ode.set_timestep(1e-6);
+	ode.stop = [t_period](const std::array<double,6>& x,const double& t){
+		return x[1] > 0 && t > t_period;
+	};  
+
+    ode.recording.clear();
+    ode.run(x,100);
+    
     return ode.recording.get_states();
 }
 
@@ -385,6 +397,9 @@ void OrbitComputation::run_full_emphemeris(const int& nSections) {
 
 	// init sections
 	std::cout << "Initializing Segments" << std::endl;
+
+    //CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
+
 	double T = 0;
 	const double dT = Section::SECTION_DAYS*86400;
 	std::vector<Section> sections(nSections,dynamics);
@@ -397,8 +412,8 @@ void OrbitComputation::run_full_emphemeris(const int& nSections) {
 		std::array<double,3> r = {e[0] - m[0],e[1] - m[1],e[2] - m[2]};
 		double sma = sqrt(Math::dot(r,r));
 
-		CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
 		
+		CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
 		sections[section].initial_state = OrbitComputation::convert(&cr3bp, dynamics, cr3bp.getHaloInitialState_3rd(10000,0,T,1),jd);
 		sections[section].t_start = T;
 		T += dT;

@@ -1,11 +1,13 @@
 #pragma once
 
+#include <string>
+#include <array>
 #include <vector>
 
 struct NestedCharTable {
-    static const char VALS[38] = {  'A','B','C','D','E','F','G','H','I','J','K','L',
+    static constexpr char VALS[38] = {  'A','B','C','D','E','F','G','H','I','J','K','L',
                                     'M','N','O','P','Q','R','S','T','U','V','W','X',
-                                    'Y','Z','0','1','2','3','4','5','6','7','8','9','_',''};
+                                    'Y','Z','0','1','2','3','4','5','6','7','8','9','_',' '};
 
     std::string name = "";
 
@@ -18,7 +20,7 @@ struct NestedCharTable {
     NestedCharTable();
     NestedCharTable(std::string NAME);
     ~NestedCharTable();
-}
+};
 
 class Config {
 
@@ -26,9 +28,9 @@ class Config {
     Config(const Config &){}
     ~Config(){}
 
-    static Config* _instance = 0x0;
+    static Config* _instance;
 
-    NestedCharTable * const index = new NestedCharTable();
+    NestedCharTable* index = new NestedCharTable();
 
     std::vector<std::string> strings;
 

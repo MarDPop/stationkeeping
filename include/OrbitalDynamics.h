@@ -34,6 +34,8 @@ public:
 	double getL2();
 	
 	double getL3();
+
+	double getPeriod(const double& Az0);
 	
 	std::array<double,6> getInitialState2(const double& Az0, const double& phi, const double& time, const bool& reverse, const bool& forward);
 	

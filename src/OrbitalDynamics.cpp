@@ -198,6 +198,56 @@ std::array<double,6> CR3BP::getInitialState2(const double& Az0, const double& ph
     return x0;
 }
 
+double CR3BP::getPeriod(const double& Az0) {
+    double xL1 = this->getL1();
+    double yL = xL1 - this->mu1; // should be negative for L1
+    double yLA = fabs(yL);
+    double c2 = this->mu/Math::CUB(yLA) + this->mu1/Math::CUB(1 - yLA);
+    double c3 = this->getCL1(yLA,3);
+    double c4 = this->getCL1(yLA,4);
+    double gamma2 = (2 - c2 + sqrt(c2*(9*c2 - 8)))/2;
+    double gamma = sqrt(gamma2);
+    double k = 2*gamma/(1 + gamma2 - c2);
+    double k2 = k*k;
+    
+    double d1 = 3*gamma2/k*(k*(6*gamma2-1) - 2*gamma);
+    
+    double a21 = 0.75*c3*(k2 - 2)/(1 + 2*c2);
+    double a22 = 0.75*c3/(1 + 2*c2);
+    double a23 = -0.75*c3*gamma/(k*d1)*(3*k*k2*gamma - 6*k*(k-gamma) + 4);
+    double a24 = -0.75*c3*gamma/(k*d1)*(2 + 3*k*gamma);
+    double b21 = -1.5*c3*gamma/d1*(3*k*gamma-4);
+    double b22 = 3*c3*gamma/d1;
+    double d21 = -c3/(2*gamma2);
+    
+    double a1 = -1.5*c3*(2*a21 + a23 + 5*d21) - 0.375*c4*(12 - k2);
+    double a2 = 1.5*c3*(a24 - 2*a22) + 1.125*c4;
+    
+    double tmp = 1/(2*gamma*(gamma*(1 + k2) - 2*k));
+    double s1 = tmp*(1.5*c3*(2*a21*(k2 - 2) - a23*(k2 + 2) - 2*k*b21) - 0.375*c4*(k2*(3*k2 - 8) + 8) );
+    double s2 = tmp*(1.5*c3*(2*a22*(k2 - 2) + a24*(k2 + 2) + 2*k*b22 + 5*d21) + 0.375*c4*(12 - k2));
+    
+    double l1 = a1 + 2*gamma2*s1;
+    double l2 = a2 + 2*gamma2*s2;
+    
+    double delta = gamma2 - c2;
+    
+    double r1 = yLA*this->sma;		
+    double Az = Az0/r1;
+    
+    double n1 = this->mean_motion; // sqrt(CUB(yLA)); // normalized, (might be a better way to compute this haha)
+    
+    double Az2 = Az*Az;
+    double Ax2 = -(Az2*l2 + delta)/l1;
+    
+    double omega2 = s1*Ax2 + s2*Az2;
+    double omega = 1 + omega2;
+    
+    tmp = gamma*omega*n1;
+    
+    return 6.283185307179586476925286766559/tmp; 
+}
+
 std::array<double,6> CR3BP::getHaloInitialState_3rd(const double& Az0, const double& phi, const double& time, const int& n = 1) {
     
     if( n < 0 || n > 4) {

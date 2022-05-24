@@ -42,7 +42,6 @@ namespace Util {
 
     inline void printOut(const Recording<6>&  record, std::string filename){
         FILE * pFile;
-
         pFile = fopen (filename.c_str(),"w");
         const int n = record.number_entries();
         std::string formatStr = "%12.6f %16.14f %16.14f %16.14f\n";

@@ -24,7 +24,7 @@ def getX(t,ts,x,y,z):
     return np.array([x[mid] + (x[mid+1] - x[mid])*dt,y[mid] + (y[mid+1] - y[mid])*dt,z[mid] + (z[mid+1] - z[mid])*dt])
     
 
-f = open("test_orbit2", "r")
+f = open("../output/CR3BP_orbit", "r")
 data = f.readlines()
 
 X = []
