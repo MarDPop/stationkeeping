@@ -25,7 +25,10 @@ void test(const int& nSections, const double& jd) {
 	ode.run(x0,5);
 
 	Util::printOut(ode.recording,"output/CR3BP_orbit");
-	//OrbitComputation::run_full_emphemeris(nSections);
+
+	Recording<6> orbit = OrbitComputation::get_cr3bp_halo_orbit(cr3bp,x0,600);
+
+	Util::printOut(orbit,"output/CR3BP_orbit_2");
 	
 }
 

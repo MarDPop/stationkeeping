@@ -49,7 +49,7 @@ public:
 	 */
 	static std::array<double,6> get_cr3bp_halo_initial_state(CR3BP* cr3bp, const double& Az, const double& tol);
 
-	static std::vector< std::array<double,6> > get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, const double& dt);
+	static Recording<6> get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, const double& dt);
 
 	static void minimizeDX(std::vector<Section>& sections);
 

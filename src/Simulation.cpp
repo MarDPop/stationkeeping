@@ -207,7 +207,7 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
     return x;
 }
 
-std::vector< std::array<double,6> > get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, double dt, double t_period){
+Recording<6> get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, double dt, double t_period){
 	dt /= cr3bp->mean_motion; 
     t_period *= 0.9/cr3bp->mean_motion;
 	
@@ -222,7 +222,7 @@ std::vector< std::array<double,6> > get_cr3bp_halo_orbit(CR3BP* cr3bp, std::arra
     ode.recording.clear();
     ode.run(x,100);
     
-    return ode.recording.get_states();
+    return ode.recording;
 }
 
 
