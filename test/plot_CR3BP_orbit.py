@@ -8,7 +8,7 @@ mu1 = 1-mu
 mean_motion = 2.6590930417337446e-06
 L1 = dynamics.getL1(mu)
 
-f = open("../output/CR3BP_orbit_2", "r")
+f = open("../output/CR3BP_orbit", "r")
 data = f.readlines()
 
 X = []

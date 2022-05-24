@@ -391,9 +391,7 @@ double OrbitComputation::calcDV(std::vector<Section>& sections){
 }
 
 
-void OrbitComputation::run_full_emphemeris(const int& nSections) {
-    const double jd0 = Util::getJDFromUTC(2024,4,15,0,0,0);
-	std::cout << jd0 << std::endl;	
+void OrbitComputation::run_full_emphemeris(const int& nSections, const double& jd0) {
 	EarthMoonSun* dynamics = new EarthMoonSun(jd0);
 	
 	std::cout << std::setprecision(12);
@@ -406,6 +404,8 @@ void OrbitComputation::run_full_emphemeris(const int& nSections) {
 	double T = 0;
 	const double dT = Section::SECTION_DAYS*86400;
 	std::vector<Section> sections(nSections,dynamics);
+
+
 	for (int section = 0; section < nSections; section++) { 
 	
 		double jd = jd0 + T/86400.0;
@@ -445,7 +445,7 @@ void OrbitComputation::run_full_emphemeris(const int& nSections) {
 	for (Section& section : sections) { 
 		section.compute_states();
 	}
-	Util::printOut(dynamics,sections,"output/test_orbit_init.orbit");
+	//Util::printOut(dynamics,sections,"output/test_orbit_init.orbit");
 
 	double dvEnd = nSections*0.01;
 	const int MAX_ITER = 0;
@@ -466,7 +466,7 @@ void OrbitComputation::run_full_emphemeris(const int& nSections) {
 	OrbitComputation::minimizeDX(sections);
 	
 	std::cout << "printing" << std::endl;
-	Util::printOut(dynamics,sections,"output/test_orbit.orbit");
+	//Util::printOut(dynamics,sections,"output/test_orbit.orbit");
 
 }
 

@@ -76,7 +76,7 @@ public:
 		return this->states[idx];
 	}
  
-    std::array<double,N> get_at(const double& time) const{
+    std::array<double,N> get_at(const double& time) const {
         std::size_t idx = bisect(times,time);
         std::array<double,N> & lo = this->states[idx];
         std::array<double,N> & hi = this->states[idx+1];

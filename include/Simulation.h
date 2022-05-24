@@ -64,7 +64,7 @@ public:
 	 * 
 	 * @param nSections 
 	 */
-	static void run_full_emphemeris(const int& nSections);
+	static void run_full_emphemeris(const int& nSections, const double& jd0);
 
 	/**
 	 * @brief 
