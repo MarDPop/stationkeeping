@@ -5,7 +5,7 @@
 #include "OrbitalDynamics.h"
 #include "Math.h"
 #include "Matrix.h"
-#include "Ode.h"
+#include "ODE.h"
 #include <thread>
 
 struct Section {
@@ -47,9 +47,9 @@ public:
 	 * @param mu2 
 	 * @return std::array<double,6> 
 	 */
-	static std::array<double,6> get_cr3bp_halo_initial_state(CR3BP* cr3bp, const double& Az, const double& tol);
+	static void differential_correct_cr3bp(CR3BP* cr3bp, std::array<double,6>& x0, std::array<double,6>& xf, double& tf, bool top, const double& tol);
 
-	static Recording<6> get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, const double& dt);
+	static Recording<6> get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, double dt, double t_period);
 
 	static void minimizeDX(std::vector<Section>& sections);
 

@@ -12,7 +12,7 @@ CR3BP::CR3BP() : mu(0.012155650403206974), mu1(0.987844349596793), mu_body1(3.98
 CR3BP::CR3BP(const double& MU1, const double& MU2, const double& SMA) : mu(MU2/(MU1+MU2)), mu1(MU1/(MU1+MU2)), mu_body1(MU1) , mu_body2(MU2) , sma(SMA), mean_motion(sqrt((MU1 + MU2)/(sma*SMA*SMA))) {
 }
 
-void CR3BP::getA(const std::array<double,6>& x, double** A){
+void CR3BP::getA(const std::array<double,6>& x, const double& jd, double** A) const{
     Math::clear(A,6);
     A[0][3] = 1;
     A[1][4] = 1;
@@ -106,99 +106,7 @@ double CR3BP::getL3(){
     return L3;
 }
 
-std::array<double,6> CR3BP::getInitialState2(const double& Az0, const double& phi, const double& time, const bool& reverse = false, const bool& forward = true) {
-    //https://commons.erau.edu/cgi/viewcontent.cgi?article=1565&context=edt
-    //https://hal.archives-ouvertes.fr/hal-00312910v2/document
-    //https://articles.adsabs.harvard.edu/cgi-bin/nph-iarticle_query?1980CeMec..22..241R&defaultprint=YES&filetype=.pdf
-    double xL1 = this->getL1();
-    double yL = xL1 - this->mu1; // should be negative for L1
-    double yLA = fabs(yL);
-    double c2 = this->mu/Math::CUB(yLA) + this->mu1/Math::CUB(1 - yLA);
-    double c3 = this->getCL1(yLA,3);
-    double c4 = this->getCL1(yLA,4);
-    double tmp = sqrt(c2*(9*c2 - 8));
-    double gamma2 = (2 - c2 + tmp)/2;
-    double gamma = sqrt(gamma2);
-    
-    double omegaP = sqrt((2 - c2 + tmp)/2);
-    //double omegaV = sqrt(c2);
-    double k = 2*gamma/(1 + gamma2 - c2);
-    double k2 = k*k;
-    
-    double d1 = 3*gamma2/k*(k*(6*gamma2-1) - 2*gamma);
-    double d2 = 8*gamma2/k*(k*(11*gamma2-1) - 2*gamma);
-    
-    double a21 = 0.75*c3*(k2 - 2)/(1 + 2*c2);
-    double a22 = 0.75*c3/(1 + 2*c2);
-    double a23 = -0.75*c3*gamma/(k*d1)*(3*k*k*k*gamma - 6*k*(k-gamma) + 4);
-    double a24 = -0.75*c3*gamma/(k*d1)*(2 + 3*k*gamma);
-    double b21 = -1.5*c3*gamma/d1*(3*k*gamma-4);
-    double b22 = 3*c3*gamma/d1;
-    double d21 = -c3/(2*gamma2);
-    
-    tmp = 3/(64*gamma2);
-    double d31 = tmp*(4*c3*a24 + c4);
-    double d32 = tmp*(4*c3*(a23 - d21) + c4*(4 + k2));
-    
-    tmp = (9*gamma2 + 1 - c2)/2;
-    double a31 = -2.25*gamma/d2*(4*c3*(k*a23 - b21) + k*c4*(4 + k2)) + tmp/d2*(3*c3*(2*a23 - k*b21) + c4*(2 + 3*k2));
-    double a32 = -1/d2*(2.25*gamma*(4*c3*(k*a24 - b22) + k*c3) + 3*tmp*(c3*(k*b22 + d21 - 2*a24) - c4));
-    
-    tmp = 0.375*(9*gamma2 + 1 + c2);
-    double b31 = (3*gamma*(3*c3*(k*b21 - 2*a23) - c4*(2 + 3*k2)) + tmp*(4*c3*(k*a23 - b21) + k*c4*(4 + k2)))/d2;
-    double b32 = (9*gamma*(c3*(k*b22 + d21 - 2*a24) - c4) + tmp*(4*c3*(k*a24 - b22) + k*c4))/d2;
-    
-    double a1 = -1.5*c3*(2*a21 + a23 + 5*d21) - 0.375*c4*(12 - k2);
-    double a2 = 1.5*c3*(a24 - 2*a22) + 1.125*c4;
-    
-    tmp = 1/(2*gamma*(gamma*(1 + k2) - 2*k));
-    double s1 = tmp*(1.5*c3*(2*a21*(k2 - 2) - a23*(k2 + 2) - 2*k*b21) - 0.375*c4*(k2*(3*k2 - 8) + 8) );
-    double s2 = tmp*(1.5*c3*(2*a22*(k2 - 2) + a24*(k2 + 2) + 2*k*b22 + 5*d21) + 0.375*c4*(12 - k2));
-    
-    double l1 = a1 + 2*gamma2*s1;
-    double l2 = a2 + 2*gamma2*s2;
-    
-    double delta = gamma2 - c2;
-    
-    double r1 = ((1-mu) - xL1)*this->sma;
-    double scale = yLA;
-    const int sign = forward ? 1 : -1;
-    
-    double Az = sign*Az0/r1;
-    const int n = reverse ? 3 : 1; 
-    double psi = phi + n*1.5707963267948966192313216916398; // phase angle
-    int dn = 2 - n;
-    
-    double n1 = sqrt(Math::CUB(yLA)); // normalized, (might be a better way to compute this haha)
-    double s = n1*time;
-    
-    double Az2 = Az*Az;
-    double Ax2 = -(Az2*l2 + delta)/l1;
-    double Ax = sqrt(Ax2);
-    
-    double omega2 = s1*Ax2 + s2*Az2;
-    double omega = 1 + omega2;
-    double tau = omega*s;
-    
-    double tau1 = omegaP*tau + phi;
-    double tau2 = omegaP*0.5*tau + psi;
-    
-    double x = a21*Ax2 + a22*Az2 - Ax*cos(tau1) + (a23*Ax2 - a24*Az2)*cos(2*tau1) + Ax*(a31*Ax2 - a32*Az2)*cos(3*tau1)  ;
-    double y = k*Ax*sin(tau1) + (b21*Ax2 - b22*Az2)*sin(2*tau1) + Ax*(b31*Ax2 - b32*Az2)*sin(3*tau1);
-    double z = dn*( Az*cos(tau2) + d21*Ax*Az*(cos(2*tau2) - 3) + Az*(d32*Ax2 - d31*Az2)*cos(3*tau2) );
-    
-    double u = omegaP*omega*n1*(-Ax*sin(tau1) - 2*(a23*Ax2 - a24*Az2)*sin(2*tau1) - 3*Ax*(a31*Ax2 - a32*Az2)*sin(3*tau1) );
-    double v = omegaP*omega*n1*(k*Ax*cos(tau1) + 2*(b21*Ax2 - b22*Az2)*cos(2*tau1) + 3*Ax*(b31*Ax2 - b32*Az2)*cos(3*tau1) );
-    double w = omegaP*0.5*omega*n1*dn*(-Az*sin(tau2) - 2*d21*Ax*Az*sin(2*tau2) - 3*Az*(d32*Ax2 - d31*Az2)*sin(3*tau2) );
-    
-    double ydot = xL1 - (xL1*n1 - scale*v)/n1;
-    double xdot = scale*u/n1;
-    double zdot = scale*w/n1;
-    std::array<double,6> x0 = {x*scale + xL1,y*scale,z*scale,xdot,ydot,zdot};
-    return x0;
-}
-
-double CR3BP::getPeriod(const double& Az0) {
+double CR3BP::get_period(const double& Az0) {
     double xL1 = this->getL1();
     double yL = xL1 - this->mu1; // should be negative for L1
     double yLA = fabs(yL);
@@ -248,7 +156,7 @@ double CR3BP::getPeriod(const double& Az0) {
     return 6.283185307179586476925286766559/tmp; 
 }
 
-std::array<double,6> CR3BP::getHaloInitialState_3rd(const double& Az0, const double& phi, const double& time, const int& n = 1) {
+std::array<double,6> CR3BP::get_halo_initial_state_3rd_order(const double& Az0, const double& phi, const double& time, const int& n = 1) {
     
     if( n < 0 || n > 4) {
         throw "bad n";
@@ -382,83 +290,6 @@ std::array<double,6> CR3BP::getHaloInitialState_3rd(const double& Az0, const dou
     double xdot = yLA*u/n1;
     double zdot = yLA*w/n1;
     std::array<double,6> x0 = {x*yLA + xL1,y*yLA,z*yLA,xdot,ydot,zdot};
-    return x0;
-}
-
-std::array<double,6> CR3BP::getInitialState(const double& Az0) {
-    //https://commons.erau.edu/cgi/viewcontent.cgi?article=1565&context=edt
-    //https://hal.archives-ouvertes.fr/hal-00312910v2/document
-    //https://articles.adsabs.harvard.edu/cgi-bin/nph-iarticle_query?1980CeMec..22..241R&defaultprint=YES&filetype=.pdf
-    double xL1 = this->getL1();
-    double yL = xL1 - this->mu1; // should be negative for L1
-    double yLA = fabs(yL);
-    double c2 = this->mu/Math::CUB(yLA) + this->mu1/Math::CUB(1 - yLA);
-    double c3 = this->getCL1(yLA,3);
-    double c4 = this->getCL1(yLA,4);
-    
-    double tmp = sqrt(c2*(9*c2 - 8));
-    double gamma2 = (2 - c2 + tmp)/2;
-    double gamma = sqrt(gamma2);
-    
-    double k = 2*gamma/(1 + gamma2 - c2);
-    double k2 = k*k;
-    
-    double d1 = 3*gamma2/k*(k*(6*gamma2-1) - 2*gamma);
-    double d2 = 8*gamma2/k*(k*(11*gamma2-1) - 2*gamma);
-    
-    double a21 = 0.75*c3*(k2 - 2)/(1 + 2*c2);
-    double a22 = 0.75*c3/(1 + 2*c2);
-    double a23 = -0.75*c3*gamma/(k*d1)*(3*k*k2*gamma - 6*k*(k-gamma) + 4);
-    double a24 = -0.75*c3*gamma/(k*d1)*(2 + 3*k*gamma);
-    double b21 = -1.5*c3*gamma/d1*(3*k*gamma-4);
-    double b22 = 3*c3*gamma/d1;
-    double d21 = -c3/(2*gamma2);
-    
-    tmp = 3/(64*gamma2);
-    double d31 = tmp*(4*c3*a24 + c4);
-    double d32 = tmp*(4*c3*(a23 - d21) + c4*(4 + k2));
-    
-    tmp = (9*gamma2 + 1 - c2)/2;
-    double a31 = -2.25*gamma/d2*(4*c3*(k*a23 - b21) + k*c4*(4 + k2)) + tmp/d2*(3*c3*(2*a23 - k*b21) + c4*(2 + 3*k2));
-    double a32 = -1/d2*(2.25*gamma*(4*c3*(k*a24 - b22) + k*c3) + 3*tmp*(c3*(k*b22 + d21 - 2*a24) - c4));
-    
-    tmp = 0.375*(9*gamma2 + 1 + c2);
-    double b31 = (3*gamma*(3*c3*(k*b21 - 2*a23) - c4*(2 + 3*k2)) + tmp*(4*c3*(k*a23 - b21) + k*c4*(4 + k2)))/d2;
-    double b32 = (9*gamma*(c3*(k*b22 + d21 - 2*a24) - c4) + tmp*(4*c3*(k*a24 - b22) + k*c4))/d2;
-    
-    double a1 = -1.5*c3*(2*a21 + a23 + 5*d21) - 0.375*c4*(12 - k2);
-    double a2 = 1.5*c3*(a24 - 2*a22) + 1.125*c4;
-    
-    tmp = 1/(2*gamma*(gamma*(1 + k2) - 2*k));
-    double s1 = tmp*(1.5*c3*(2*a21*(k2 - 2) - a23*(k2 + 2) - 2*k*b21) - 0.375*c4*(k2*(3*k2 - 8) + 8) );
-    double s2 = tmp*(1.5*c3*(2*a22*(k2 - 2) + a24*(k2 + 2) + 2*k*b22 + 5*d21) + 0.375*c4*(12 - k2));
-    
-    double l1 = a1 + 2*gamma2*s1;
-    double l2 = a2 + 2*gamma2*s2;
-    
-    double delta = gamma2 - c2;
-    
-    double r1 = ((1-mu) - xL1)*sma;
-    double scale = yLA;
-    double Az = Az0/r1;
-    int m = 1;
-    int dn = 2 - m;
-    
-    double Az2 = Az*Az;
-    double Ax2 = -(Az2*l2 + delta)/l1;
-    double Ax = sqrt(Ax2);
-    
-    double omega2 = s1*Ax2 + s2*Az2;
-    double omega = 1 + omega2;
-    double n1 = sqrt(Math::CUB(yLA));
-    
-    double x = a21*Ax2 + a22*Az2 - Ax + (a23*Ax2 - a24*Az2) + Ax*(a31*Ax2 - a32*Az2)  ;
-    double z = dn* ( Az + d21*Ax*Az*-2 + Az*(d32*Ax2 - d31*Az2) );
-    
-    double v = gamma*omega*n1*(k*Ax + 2*(b21*Ax2 - b22*Az2) + 3*Ax*(b31*Ax2 - b32*Az2) );
-        
-    double ydot = xL1 - (xL1*n1 - scale*v)/n1;
-    std::array<double,6> x0 = {x*scale + xL1,0,z*scale,0,ydot,0};
     return x0;
 }
 

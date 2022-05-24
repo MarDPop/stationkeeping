@@ -102,7 +102,7 @@ void Section::compute_STM(){
    
 }
 
-std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3bp, const double& Az, const double& tol = 1e-9) {
+void OrbitComputation::differential_correct_cr3bp( CR3BP* cr3bp, std::array<double,6>& x0, std::array<double,6>& xf, double& tf, bool top, const double& tol = 1e-10) {
 
     double f = cr3bp->sma*cr3bp->mean_motion;
     double tolerance = tol / f;
@@ -112,11 +112,15 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
 	ode.set_dynamics(cr3bp);
 	ode.recording.set_record_interval(recording_interval);
 	ode.set_timestep(1e-6);
-	ode.stop = [](const std::array<double,6>& x,const double& t){
-		return x[1] < 0;
-	};
-	
-	std::array<double,6> x = cr3bp->getInitialState(Az);
+	if( top ) {
+		ode.stop = [](const std::array<double,6>& x,const double& t){
+			return x[1] < 0;
+		};
+	} else {
+		ode.stop = [](const std::array<double,6>& x,const double& t){
+			return x[1] > 0;
+		};
+	}
 	
 	std::cout << "Running" <<std::endl;
 	double A00,A11,A10,A01,dx0,dz0,dyd0;
@@ -126,9 +130,10 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
 	bool alternate = true;
 	for(int iter = 0; iter < MAX_HALO_ITERATIONS;iter++) {
 		ode.recording.clear();
-		ode.run(x,100);
+		ode.set_time(0);
+		ode.run(x0,100);
 		
-		std::array<double,6> xf = ode.get_state();
+		xf = ode.get_state();
 		
 		std::array<double,6> dxf = cr3bp->get_state_rate(xf,ode.get_time());
 		
@@ -142,8 +147,10 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
 		
 		double e = (fabs(x_dot_f) + fabs(z_dot_f));
         
-        if (e < tolerance)
+        if (e < tolerance) {
+			tf = ode.get_time() + dtf;
             break;
+		}
     
         //Integrate State Transition Matrix
         Math::identity(STM,6);
@@ -151,12 +158,12 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
         for(int i = 0; i < n;i++) {
 			const std::array<double,6>& xi = ode.recording.get(i);
 			double dt = ode.recording.time_at(i+1) - ode.recording.time_at(i);
-            cr3bp->getA(xi,A);
+            cr3bp->getA(xi,0,A);
             Math::mult(A,STM,dSTM,6);
 			Math::mult(dSTM,dt,6);
             Math::add(STM,dSTM,6);
 		}	
-		cr3bp->getA(ode.recording.get(n),A);
+		cr3bp->getA(ode.recording.get(n),0,A);
 		Math::mult(A,STM,dSTM,6);
 		Math::mult(dSTM,dtf,6);
 		Math::add(STM,dSTM,6);	
@@ -165,8 +172,6 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
 		
         double xdd = dxf[3]/xf[4];
         double zdd = dxf[5]/xf[4];
-    
-        double stepSize = 1/(1+e*5);
     
         //alternate between dx0 and dx0 matrices
         if (alternate) {
@@ -177,7 +182,7 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
             double det = A00*A11 - A10*A01;
             dx0 = (A01*z_dot_f - A11*x_dot_f)/det;
             dyd0 = (A10*x_dot_f - A00*z_dot_f)/det;
-            x[0] += stepSize*dx0;
+            x0[0] += dx0;
         } else{
             A00 = STM[3][2] - xdd*STM[1][2];
             A01 = STM[3][4] - xdd*STM[1][4];
@@ -186,14 +191,14 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
             double det = A00*A11 - A10*A01;
             dz0 = (A01*z_dot_f - A11*x_dot_f)/det;
             dyd0 = (A10*x_dot_f - A00*z_dot_f)/det;
-            x[2] += stepSize*dz0;
+            x0[2] += dz0;
 		}
-        x[4] += stepSize*dyd0;
+        x0[4] += dyd0;
     
         std::cout << "corrected initial state: " << std::endl;
 		
 		for(int i = 0; i < 6;i++){
-			std::cout << x[i] << " ";
+			std::cout << x0[i] << " ";
 		}
 		std::cout << std::endl;
     
@@ -203,13 +208,11 @@ std::array<double,6> OrbitComputation::get_cr3bp_halo_initial_state( CR3BP* cr3b
 	Math::del(A,6);
 	Math::del(STM,6);
 	Math::del(dSTM,6);
-
-    return x;
 }
 
-Recording<6> get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, double dt, double t_period){
-	dt /= cr3bp->mean_motion; 
-    t_period *= 0.9/cr3bp->mean_motion;
+Recording<6> OrbitComputation::get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<double,6> x, double dt, double t_period){
+	dt *= cr3bp->mean_motion; 
+    t_period *= 0.9*cr3bp->mean_motion;
 	
 	ODE_RK4<6> ode = ODE_RK4<6>();
 	ode.set_dynamics(cr3bp);
@@ -414,7 +417,7 @@ void OrbitComputation::run_full_emphemeris(const int& nSections) {
 
 		
 		CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
-		sections[section].initial_state = OrbitComputation::convert(&cr3bp, dynamics, cr3bp.getHaloInitialState_3rd(10000,0,T,1),jd);
+		sections[section].initial_state = OrbitComputation::convert(&cr3bp, dynamics, cr3bp.get_halo_initial_state_3rd_order(10000,0,T,1),jd);
 		sections[section].t_start = T;
 		T += dT;
 		sections[section].t_final = T;

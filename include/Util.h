@@ -44,7 +44,7 @@ namespace Util {
         FILE * pFile;
         pFile = fopen (filename.c_str(),"w");
         const int n = record.number_entries();
-        std::string formatStr = "%12.6f %16.14f %16.14f %16.14f\n";
+        std::string formatStr = "%.4e %+16.14e %+16.14e %+16.14e\n";
         const char* format = formatStr.c_str();
         for (int i = 0 ; i < n; i++) {
             const std::array<double,6>& state = record.get(i);

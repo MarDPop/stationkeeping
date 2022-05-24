@@ -7,7 +7,13 @@
 #include <vector>
 #include <string>
 
-class CR3BP : public Dynamics<6> {
+class OrbitalDynamics : public Dynamics<6> {
+
+public: 
+	virtual void getA(const std::array<double,6>& x, const double& jd, double** A) const {}
+};
+
+class CR3BP : public OrbitalDynamics {
 	
 public:
 
@@ -21,7 +27,7 @@ public:
 	CR3BP();
 	CR3BP(const double& MU1, const double& MU2, const double& SMA);
 	
-	void getA(const std::array<double,6>& x, double** A);
+	void getA(const std::array<double,6>& x, const double& jd, double** A) const;
 	
 	double getCL1(const double& yL,const int& n);
 
@@ -35,13 +41,9 @@ public:
 	
 	double getL3();
 
-	double getPeriod(const double& Az0);
+	double get_period(const double& Az0);
 	
-	std::array<double,6> getInitialState2(const double& Az0, const double& phi, const double& time, const bool& reverse, const bool& forward);
-	
-	std::array<double,6> getHaloInitialState_3rd(const double& Az0, const double& phi, const double& time, const int& n);
-	
-	std::array<double,6> getInitialState(const double& Az0);
+	std::array<double,6> get_halo_initial_state_3rd_order(const double& Az0, const double& phi, const double& time, const int& n);
 	
 	std::array<double,6> convert_state_to_inertial(const std::array<double,6>& x) ;
 
@@ -62,7 +64,7 @@ struct VectorTable {
 	
 };
 
-class EarthMoonSun : public Dynamics<6> {
+class EarthMoonSun : public OrbitalDynamics {
 	
 	std::vector<double> jds;
 	std::vector<std::array<double,3> > r_earth;
