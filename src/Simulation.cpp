@@ -417,7 +417,7 @@ void OrbitComputation::run_full_emphemeris(const int& nSections, const double& j
 
 		
 		CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
-		sections[section].initial_state = OrbitComputation::convert(&cr3bp, dynamics, cr3bp.get_halo_initial_state_3rd_order(10000,0,T,1),jd);
+		sections[section].initial_state = OrbitalDynamics::convert(&cr3bp, dynamics, cr3bp.get_halo_initial_state_3rd_order(10000,0,T,1),jd);
 		sections[section].t_start = T;
 		T += dT;
 		sections[section].t_final = T;
@@ -470,43 +470,32 @@ void OrbitComputation::run_full_emphemeris(const int& nSections, const double& j
 
 }
 
-std::array<double,6> OrbitComputation::convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd){
-	std::array<double,6> x = cr3bp->convert_state_to_inertial(state_guess);
-	
-	const double xL1 = cr3bp->getL1() - cr3bp->mu;
-	
-	std::array< std::array<double,3>, 4> frame = dynamics->getEarthMoonBarycenterCS(jd);
-	
-	std::array<double,3> moon = dynamics->moon->getPos(jd - 0.0005);
-	std::array<double,3> earth = dynamics->earth->getPos(jd - 0.0005);
-	std::array<double,3> L1_0 = {moon[0] - earth[0],moon[1] - earth[1],moon[2] - earth[2]};
-	
-	moon = dynamics->moon->getPos(jd + 0.0005);
-	earth = dynamics->earth->getPos(jd + 0.0005);
-	std::array<double,3> L1_1 = {moon[0] - earth[0],moon[1] - earth[1],moon[2] - earth[2]};
-	
-	double dt = 0.001*86400;
-	double dL1dt = (sqrt(Math::dot(L1_1,L1_1)) - sqrt(Math::dot(L1_0,L1_0)))*xL1/dt;
-	
-	std::array< std::array<double,3>, 3> CS = {frame[1],frame[2],frame[3]};
-	std::array< std::array<double,3>, 3> CST = Math::transpose(CS);
-	
-	std::array<double,3> pos = {x[0],x[1],x[2]};
-	std::array<double,3> vel = {x[3] + dL1dt,x[4],x[5]};
-	
-	pos = Math::mult(CST,pos);
-	vel = Math::mult(CST,vel);
+void OrbitComputation::correct(std::vector<Section>& sections){
+	for (Section& section : sections) { 
+		section.compute_states();
+	}
+	//Util::printOut(dynamics,sections,"output/test_orbit_init.orbit");
 
-	std::array<double,3>& origin = frame[0]; // Should be zero!
-	x[0] = pos[0] + origin[0];
-	x[1] = pos[1] + origin[1];
-	x[2] = pos[2] + origin[2];
-	x[3] = vel[0];
-	x[4] = vel[1];
-	x[5] = vel[2];
-	
-	return x;
+	double dvEnd = sections.size()*0.01;
+	const int MAX_ITER = 0;
+	for(int iter = 0; iter < MAX_ITER; iter++) {
+
+		OrbitComputation::minimizeDX(sections);
+		
+		OrbitComputation::minimizeDV(sections);
+		
+		double dv = OrbitComputation::calcDV(sections);
+		std::cout << "DV: " << dv << std::endl;
+		if(dv < dvEnd){
+			break;
+		}
+
+	}
+
+	OrbitComputation::minimizeDX(sections);
 }
+
+
 
 /*
 void compute_STM(){

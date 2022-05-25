@@ -7,10 +7,30 @@
 #include <vector>
 #include <string>
 
+class EarthMoonSun;
+
+class CR3BP;
+
 class OrbitalDynamics : public Dynamics<6> {
 
 public: 
 	virtual void getA(const std::array<double,6>& x, const double& jd, double** A) const {}
+
+	static std::array<double,3> convert_cr3bp_to_inertial_pos(EarthMoonSun* dynamics, const std::array<double,6>& state, const double& jd);
+
+	static std::array<double,3> convert_cr3bp_to_rotating_barycenter(EarthMoonSun* dynamics, const std::array<double,6>& state, const double& jd);
+
+	/**
+	 * @brief 
+	 * 
+	 * @param cr3bp 
+	 * @param dynamics 
+	 * @param state_guess 
+	 * @param jd 
+	 * @return std::array<double,6> 
+	 */
+	static std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd);
+
 };
 
 class CR3BP : public OrbitalDynamics {
@@ -23,6 +43,8 @@ public:
 	const double mu_body2;
 	const double sma;
 	const double mean_motion;
+
+	static constexpr double EARTH_L1 = 0.836915155115;
 	
 	CR3BP();
 	CR3BP(const double& MU1, const double& MU2, const double& SMA);
@@ -101,6 +123,8 @@ public:
 	}
 	
 	std::array< std::array<double,3>, 4> getEarthMoonBarycenterCS(const double& jd) const;
+
+	std::array< std::array<double,3>, 4> getEarthMoonL1CS(const double& jd) const;
 	
 	std::array<double,6> cr3bp_to_embj2000(const std::array<double,6>& cr3bp, const double& jd) const;
 	

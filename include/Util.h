@@ -65,6 +65,30 @@ namespace Util {
         }
         fclose (pFile);
     }
+
+    inline void printOut(EarthMoonSun* dynamics, const std::vector<Section>& sections, std::string filename){
+        FILE * pFile;
+
+        pFile = fopen (filename.c_str(),"w");
+
+        std::string formatStr = "%12.6f %16.14f %16.14f %16.14f\n";
+        const char* format = formatStr.c_str();
+        
+        for(const Section& section : sections) {
+            const int n = section.times.size();
+            for (int i = 0 ; i < n; i++) {
+                const std::array<double,6>& x = section.states[i];
+                double jd = dynamics->getJD0() + section.times[i]/86400.0;
+                std::array< std::array<double,3>, 4> frame = dynamics->getEarthMoonL1CS(jd);
+                std::array< std::array<double,3>, 3> CS = {frame[1],frame[2],frame[3]};
+                std::array<double,3>& origin = frame[0];
+                std::array<double,3> pos = {x[0] - origin[0],x[1] - origin[1],x[2] - origin[2]};
+                pos = Math::mult(CS,pos);
+                fprintf (pFile, format,section.times[i], pos[0], pos[1], pos[2]);
+            }
+        }
+        fclose (pFile);
+    }
 	
 	inline int getJDNFromGregorianYMD(int y, int m, int d){
         int m12 = (m - 14)/12;

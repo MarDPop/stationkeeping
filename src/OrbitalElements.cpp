@@ -1,6 +1,6 @@
 #include "../include/OrbitalElements.h"
 
-#include "Math.h"
+#include "../include/Math.h"
 #include <vector>
 #include <array>
 #include <fstream>

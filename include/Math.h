@@ -28,6 +28,13 @@ namespace Math {
 		std::array<double,3> w = {u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]};
 		return w;
 	}
+
+    inline double distance(const std::array<double,3>& u, const std::array<double,3>& v) {
+        double dx = u[0] - v[0];
+        double dy = u[1] - v[1];
+        double dz = u[2] - v[2];
+		return sqrt(dx*dx + dy*dy + dz*dz);
+	}
 	
 	inline std::array< std::array<double,3>, 3 > transpose(const std::array< std::array<double,3>, 3 >& A) {
 		std::array< std::array<double,3>, 3 > AT;

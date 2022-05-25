@@ -66,16 +66,8 @@ public:
 	 */
 	static void run_full_emphemeris(const int& nSections, const double& jd0);
 
-	/**
-	 * @brief 
-	 * 
-	 * @param cr3bp 
-	 * @param dynamics 
-	 * @param state_guess 
-	 * @param jd 
-	 * @return std::array<double,6> 
-	 */
-	static std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd);
+	static void correct(std::vector<Section>& sections);
+
 
 };
 
