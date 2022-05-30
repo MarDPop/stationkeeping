@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Dynamics.h"
+#include "OrbitalDynamics.h"
+#include "Simulation.h"
 #include "ODE.h"
 #include <iostream>
 #include <iomanip>

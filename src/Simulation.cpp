@@ -6,14 +6,13 @@
 
 #define MAX_HALO_ITERATIONS 10
 
-
-const double Section::SECTION_DAYS = 1;
+const double Section::SECTION_DAYS = 2;
 
 Section::Section(EarthMoonSun* f){
     this->dynamics = f;
     this->ode = ODE_RK4<6>();
     this->ode.set_dynamics(f);
-    this->ode.recording.set_record_interval(100);
+    this->ode.recording.set_record_interval(120);
     this->ode.set_timestep(10);
 }
 
@@ -156,14 +155,14 @@ void OrbitComputation::differential_correct_cr3bp( CR3BP* cr3bp, std::array<doub
         Math::identity(STM,6);
         int n = ode.recording.number_entries()-1;
         for(int i = 0; i < n;i++) {
-			const std::array<double,6>& xi = ode.recording.get(i);
+			const std::array<double,6>& xi = ode.recording.state_at(i);
 			double dt = ode.recording.time_at(i+1) - ode.recording.time_at(i);
             cr3bp->getA(xi,0,A);
             Math::mult(A,STM,dSTM,6);
 			Math::mult(dSTM,dt,6);
             Math::add(STM,dSTM,6);
 		}	
-		cr3bp->getA(ode.recording.get(n),0,A);
+		cr3bp->getA(ode.recording.state_at(n),0,A);
 		Math::mult(A,STM,dSTM,6);
 		Math::mult(dSTM,dtf,6);
 		Math::add(STM,dSTM,6);	

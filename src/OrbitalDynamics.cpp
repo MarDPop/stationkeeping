@@ -43,8 +43,8 @@ std::array<double,3> OrbitalDynamics::convert_cr3bp_to_rotating_barycenter(Earth
 	return inertial;
 }
 
-std::array<double,6> OrbitalDynamics::convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd){
-	std::array<double,6> x = cr3bp->convert_state_to_inertial(state_guess);
+std::array<double,6> OrbitalDynamics::convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_cr3bp, const double& jd){
+	std::array<double,6> x = cr3bp->convert_state_to_inertial(state_cr3bp);
 	
 	const double xL1 = cr3bp->getL1() - cr3bp->mu;
 	

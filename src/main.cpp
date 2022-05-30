@@ -8,6 +8,39 @@
 #include <array>
 #include <iomanip>
 
+void printSections(const std::vector<Section>& sections){
+
+	if(sections.size() < 1){
+		return;
+	}
+	
+	EarthMoonSun* dynamics = sections[0].dynamics;
+	const double jd0 = dynamics->getJD0();
+	for(int i = 0; i < sections.size(); i++){
+		const Recording<6>& recording = sections[i].ode.recording;
+		Util::printOut(recording,"output/section_inertial_" + std::to_string(i));
+		std::vector< double > jds;
+		std::vector< std::array<double,3> > rotating_positions;
+
+		for(int j = 0; j < recording.number_entries();j++){
+			double t = recording.time_at(j);
+			std::array<double,6> x = recording.state_at(j);
+			double jd = t/Util::JULIAN_DAY + jd0;
+			std::array< std::array<double,3>, 4> frame = dynamics->getEarthMoonL1CS(jd);
+			std::array<double,3> r = {x[0] - frame[0][0], x[1] - frame[0][1], x[2] - frame[0][2]};
+			std::array<double,3> r_L1;
+			r_L1[0] = Math::dot(frame[1],r);
+			r_L1[1] = Math::dot(frame[2],r);
+			r_L1[2] = Math::dot(frame[3],r);
+
+			jds.push_back(jd);
+			rotating_positions.push_back(r_L1);
+		}
+
+		Util::printOut(jds,rotating_positions,"output/section_rotating_" + std::to_string(i));
+	}
+}
+
 
 void test(const int& nSections, const double& jd, const double& Az) {
 	VectorTable earth = VectorTable("resources/EARTH_EMB_VECTOR.dat");
@@ -16,9 +49,6 @@ void test(const int& nSections, const double& jd, const double& Az) {
 	double sma = 381000; // approximately average
 
 	CR3BP* cr3bp = new CR3BP(OrbitalElements::EARTH_MU, OrbitalElements::MOON_MU,sma);
-	
-	std::cout << std::setprecision(12) << cr3bp->getL1() << std::endl;
-	return;
 
 	std::array<double,6> x0 = cr3bp->get_halo_initial_state_3rd_order(Az,0,0,1);
 	std::array<double,6> xf;
@@ -45,8 +75,8 @@ void test(const int& nSections, const double& jd, const double& Az) {
 	while(time < time_final){
 		double t = fmod(time, period) * cr3bp->mean_motion;
 		double jdi = jd + time/Util::JULIAN_DAY;
-		positions.push_back(OrbitalDynamics::convert_cr3bp_to_inertial_pos(EMS,orbit.get_at(t),jdi));
-		BC_positions.push_back(OrbitalDynamics::convert_cr3bp_to_rotating_barycenter(EMS,orbit.get_at(t),jdi));
+		positions.push_back(OrbitalDynamics::convert_cr3bp_to_inertial_pos(EMS,orbit.get(t),jdi));
+		BC_positions.push_back(OrbitalDynamics::convert_cr3bp_to_rotating_barycenter(EMS,orbit.get(t),jdi));
 		jds.push_back(jdi);
 		time += dt;
 	}
@@ -65,11 +95,21 @@ void test(const int& nSections, const double& jd, const double& Az) {
 
 	std::vector< Section > sections(nSections,EMS);
 
-	double jdi = jd;
-	double djd = Section::SECTION_DAYS;
+	time = 0;
+	dt = Section::SECTION_DAYS*86400;
 	for(int i = 0; i < nSections; i++){
-		
+		double t = fmod(time, period) * cr3bp->mean_motion;
+		double jdi = jd + time/Util::JULIAN_DAY;
+		sections[i].initial_state = OrbitalDynamics::convert(cr3bp,EMS,orbit.get(t),jdi);
+		sections[i].t_start = time;
+		time += dt;
+		sections[i].t_final = time;
+		sections[i].compute_states();
 	}
+
+	std::cout << "Printing initial sections." << std::endl;
+	printSections(sections);
+
 }
 
 int main(int argc, char* argv[]) {

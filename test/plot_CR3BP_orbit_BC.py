@@ -28,6 +28,12 @@ fig = plt.figure()
 ax3d = plt.axes(projection='3d')
 
 ax3d.plot(X,Y,Z,'m')
+ax3d.scatter(-mu*391000,0,0,'b')
+ax3d.scatter(mu1*391000,0,0,'k')
+
+ax3d.set_xlim([-100000,400000])
+ax3d.set_ylim([-250000,250000])
+ax3d.set_zlim([-250000,250000])
 
 plt.show()
 

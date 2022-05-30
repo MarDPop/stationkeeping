@@ -72,11 +72,11 @@ public:
 		return this->times.back();
 	}
 	
-	inline std::array<double,N> get(int idx) const {
+	inline std::array<double,N> state_at(int idx) const {
 		return this->states[idx];
 	}
  
-    inline std::array<double,N> get_at(const double& time) const {
+    inline std::array<double,N> get(const double& time) const {
         int idx = bisect(this->times,time);
         const std::array<double,N> & lo = this->states[idx];
         const std::array<double,N> & hi = this->states[idx+1];
