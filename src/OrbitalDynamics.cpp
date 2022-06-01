@@ -74,8 +74,8 @@ std::array<double,6> OrbitalDynamics::convert_cr3bp_to_inertial(EarthMoonSun* dy
 	std::array<double,3> r_earth_2 = dynamics->earth->getPos(jd + djd);
 	std::array<double,3> sma_2 = {r_moon_2[0] - r_earth_2[0], r_moon_2[1] - r_earth_2[1],r_moon_2[2] - r_earth_2[2]};
 	
-	double dt = djd*86400;
-	double dL1dt = (Math::norm(sma_2) - sma)*(CR3BP::EARTH_L1 + cr3bp.mu)/dt;
+	double dt = djd*Util::JULIAN_DAY;
+	double dL1dt = (Math::norm(sma_2) - sma)/dt;
 	
 	std::array< std::array<double,3>, 3> CST = {{{x[0],y[0],z[0]},{x[1],y[1],z[1]},{x[2],y[2],z[2]}}};
 	

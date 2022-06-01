@@ -6,7 +6,7 @@
 
 #define MAX_HALO_ITERATIONS 10
 
-const double Section::SECTION_DAYS = 2;
+const double Section::SECTION_DAYS = 1;
 
 Section::Section(EarthMoonSun* f){
     this->dynamics = f;
@@ -42,11 +42,9 @@ double Section::target(const std::array<double,6>& xp){
         b.data[i] = xp[i] - xf[i];
     }
 
-	double delta  = b.data[0]*b.data[0] + b.data[1]*b.data[1] + b.data[2]*b.data[2];
+	double delta  = sqrt(b.data[0]*b.data[0] + b.data[1]*b.data[1] + b.data[2]*b.data[2]);
 
-	std::cout << delta << std::endl;
-
-	double stepSize = 1/(1 + sqrt(delta*1e-6));
+	double stepSize = 1/(1 + delta*5e-4);
 
     Matrix<4,3> LT = L.get_transpose();
     Matrix<3,3> A = L*LT;
@@ -257,15 +255,13 @@ void OrbitComputation::minimizeDX(std::vector<Section>& sections){
 				completed[sId] = true;
 				completedCount++;
 			}
+
+			sections[sId+1].t_start = sections[sId].t_final;
         }
 
 		std::cout << "Completed: " << completedCount << std::endl;
 
-        for (uint_fast16_t sId = 1; sId < nSections; sId++) {
-            sections[sId].t_start = sections[sId-1].t_final;
-        }
-
-		if(completedCount == nSections) {
+		if(completedCount == nSections-1) {
 			break;
 		}
     }
