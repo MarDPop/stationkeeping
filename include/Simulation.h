@@ -22,7 +22,7 @@ struct Section {
 	
 	void compute_states();
 
-    void target(const std::array<double,6>& xp);
+    double target(const std::array<double,6>& xp);
 
 	void compute_STM();
 };

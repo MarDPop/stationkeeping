@@ -16,6 +16,16 @@ namespace Util {
 	constexpr int J2000 = 2451545;
 	constexpr int JULIAN_DAY = 86400;
 	constexpr double SIDREAL_DAY = 86164.09054;
+
+    template<int N>
+    inline std::string to_string(std::array<double,N> arr){
+        std::string out = "[";
+        for(int i = 0; i < N;i++){
+            out += std::to_string(arr[i]) + ", ";
+        }
+        out += "]";
+        return out;
+    }
 	
 	inline void writeCSV(const std::vector< std::vector<double> > & data, const std::string & filename) {
         std::ofstream myfile;

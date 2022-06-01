@@ -2,6 +2,7 @@
 
 #include "../include/OrbitalElements.h"
 #include "../include/Math.h"
+#include "../include/Util.h"
 #include <cmath>
 #include <iostream>
 #include <fstream>
@@ -43,42 +44,55 @@ std::array<double,3> OrbitalDynamics::convert_cr3bp_to_rotating_barycenter(Earth
 	return inertial;
 }
 
-std::array<double,6> OrbitalDynamics::convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_cr3bp, const double& jd){
-	std::array<double,6> x = cr3bp->convert_state_to_inertial(state_cr3bp);
+std::array<double,6> OrbitalDynamics::convert_cr3bp_to_inertial(EarthMoonSun* dynamics, const std::array<double,6>& state_cr3bp, const double& jd){
 	
-	const double xL1 = cr3bp->getL1() - cr3bp->mu;
+    std::array<double,3> r_moon = dynamics->moon->getPos(jd);
+    std::array<double,3> r_earth = dynamics->earth->getPos(jd);
+    std::array<double,3> x = {r_moon[0] - r_earth[0],r_moon[1] - r_earth[1],r_moon[2] - r_earth[2]};
+    
+    std::array<double,3> v_earth = dynamics->earth->getVel(jd);
+    std::array<double,3> h_earth = Math::cross(r_earth,v_earth);
+    std::array<double,3> v_moon = dynamics->moon->getVel(jd);
+    std::array<double,3> h_moon = Math::cross(r_moon,v_moon);
+    
+    std::array<double,3> z = {h_earth[0] + h_moon[0],h_earth[1] + h_moon[1],h_earth[2] + h_moon[2]};
+    double z_mag = sqrt(z[0]*z[0] + z[1]*z[1] + z[2]*z[2]);
+    double sma = sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
+    for(int i = 0;i < 3; i++) {
+        x[i] /= sma;
+        z[i] /= z_mag;
+    }
+    std::array<double,3> y = Math::cross(z,x);
+
+    CR3BP cr3bp(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
+    
+    std::array<double,6> state = cr3bp.convert_state_to_inertial(state_cr3bp);
+
+    const double djd = 0.0005;
 	
-	std::array< std::array<double,3>, 4> frame = dynamics->getEarthMoonBarycenterCS(jd);
+	std::array<double,3> r_moon_2 = dynamics->moon->getPos(jd + djd);
+	std::array<double,3> r_earth_2 = dynamics->earth->getPos(jd + djd);
+	std::array<double,3> sma_2 = {r_moon_2[0] - r_earth_2[0], r_moon_2[1] - r_earth_2[1],r_moon_2[2] - r_earth_2[2]};
 	
-	std::array<double,3> moon = dynamics->moon->getPos(jd - 0.0005);
-	std::array<double,3> earth = dynamics->earth->getPos(jd - 0.0005);
-	std::array<double,3> L1_0 = {moon[0] - earth[0],moon[1] - earth[1],moon[2] - earth[2]};
+	double dt = djd*86400;
+	double dL1dt = (Math::norm(sma_2) - sma)*(CR3BP::EARTH_L1 + cr3bp.mu)/dt;
 	
-	moon = dynamics->moon->getPos(jd + 0.0005);
-	earth = dynamics->earth->getPos(jd + 0.0005);
-	std::array<double,3> L1_1 = {moon[0] - earth[0],moon[1] - earth[1],moon[2] - earth[2]};
+	std::array< std::array<double,3>, 3> CST = {{{x[0],y[0],z[0]},{x[1],y[1],z[1]},{x[2],y[2],z[2]}}};
 	
-	double dt = 0.001*86400;
-	double dL1dt = (sqrt(Math::dot(L1_1,L1_1)) - sqrt(Math::dot(L1_0,L1_0)))*xL1/dt;
-	
-	std::array< std::array<double,3>, 3> CS = {frame[1],frame[2],frame[3]};
-	std::array< std::array<double,3>, 3> CST = Math::transpose(CS);
-	
-	std::array<double,3> pos = {x[0],x[1],x[2]};
-	std::array<double,3> vel = {x[3] + dL1dt,x[4],x[5]};
+	std::array<double,3> pos = {state[0],state[1],state[2]};
+	std::array<double,3> vel = {state[3] + dL1dt,state[4],state[5]};
 	
 	pos = Math::mult(CST,pos);
 	vel = Math::mult(CST,vel);
 
-	std::array<double,3>& origin = frame[0]; // Should be zero!
-	x[0] = pos[0] + origin[0];
-	x[1] = pos[1] + origin[1];
-	x[2] = pos[2] + origin[2];
-	x[3] = vel[0];
-	x[4] = vel[1];
-	x[5] = vel[2];
+	state[0] = pos[0];
+	state[1] = pos[1];
+	state[2] = pos[2];
+	state[3] = vel[0];
+	state[4] = vel[1];
+	state[5] = vel[2];
 	
-	return x;
+	return state;
 }
 
 CR3BP::CR3BP() : mu(0.012155650403206974), mu1(0.987844349596793), mu_body1(3.986004418e5) , mu_body2(4.9048695e3) , sma(385000) , mean_motion(2.6590930417337446e-06)  {
@@ -618,6 +632,7 @@ std::array< std::array<double,3>, 4> EarthMoonSun::getEarthMoonL1CS(const double
     //Normalized: L1 from  Earth Distance
     
     double xL1 = OrbitalElements::MOON_MU/(OrbitalElements::EARTH_MU + OrbitalElements::MOON_MU) + CR3BP::EARTH_L1;
+
     std::array<double,3> L1 = {r_earth[0] + xL1*x[0],r_earth[1] + xL1*x[1],r_earth[2] + xL1*x[2]};
     
     std::array<double,3> v_earth = this->earth->getVel(jd);

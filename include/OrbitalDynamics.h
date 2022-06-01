@@ -29,7 +29,7 @@ public:
 	 * @param jd 
 	 * @return std::array<double,6> 
 	 */
-	static std::array<double,6> convert(CR3BP* cr3bp, EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd);
+	static std::array<double,6> convert_cr3bp_to_inertial(EarthMoonSun* dynamics, const std::array<double,6>& state_guess, const double& jd);
 
 };
 

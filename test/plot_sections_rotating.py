@@ -8,20 +8,26 @@ mu1 = 1-mu
 mean_motion = 2.6590930417337446e-06
 L1 = dynamics.getL1(mu)
 
-X = []
-Y = []
-Z = []
-T = []
+fig = plt.figure()
+ax3d = plt.axes(projection='3d')
+
 for i in range(30):
-    f = open("../output/section_rotating_" + str(i), "r")
+    f = open("../output/section_rotating_" + str(i) + "_pass2", "r")
     data = f.readlines()
 
+    X = []
+    Y = []
+    Z = []
+    T = []
     for line in data:
         row = line.split()
         T.append(float(row[0]))
         X.append(float(row[1]))
         Y.append(float(row[2]))
         Z.append(float(row[3]))
+
+    ax3d.plot(X,Y,Z)
+    ax3d.scatter(X[0],Y[0],Z[0])
 
     f.close()
 
@@ -30,14 +36,6 @@ sma = 383717
 
 RE = 6371.1
 RM = 1731.1
-
-fig = plt.figure()
-ax3d = plt.axes(projection='3d')
-
-ax3d.plot(X,Y,Z,'m')
-ax3d.set_xlim([-0.5*sma,0.5*sma])
-ax3d.set_ylim([-0.5*sma,0.5*sma])
-ax3d.set_zlim([-0.5*sma,0.5*sma])
 
 plt.show()
 

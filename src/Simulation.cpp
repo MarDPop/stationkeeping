@@ -26,7 +26,7 @@ void Section::compute_states() {
     this->states.push_back(ode.get_state());
 }
 
-void Section::target(const std::array<double,6>& xp){
+double Section::target(const std::array<double,6>& xp){
 	this->compute_states();
     this->compute_STM();
     
@@ -42,15 +42,23 @@ void Section::target(const std::array<double,6>& xp){
         b.data[i] = xp[i] - xf[i];
     }
 
+	double delta  = b.data[0]*b.data[0] + b.data[1]*b.data[1] + b.data[2]*b.data[2];
+
+	std::cout << delta << std::endl;
+
+	double stepSize = 1/(1 + sqrt(delta*1e-6));
+
     Matrix<4,3> LT = L.get_transpose();
     Matrix<3,3> A = L*LT;
     Matrix<3,3>::solve(A,b);
 	Vector<4> u = LT*b;
 
-    this->initial_state[3] += 0.2*u[0];
-    this->initial_state[4] += 0.2*u[1];
-    this->initial_state[5] += 0.2*u[2];
-    this->t_final += 0.1*u[3];	
+    this->initial_state[3] += stepSize*u[0];
+    this->initial_state[4] += stepSize*u[1];
+    this->initial_state[5] += stepSize*u[2];
+    this->t_final += stepSize*0.5*u[3];	 
+
+	return delta;
 }
 
 void Section::compute_STM(){		
@@ -230,20 +238,38 @@ Recording<6> OrbitComputation::get_cr3bp_halo_orbit(CR3BP* cr3bp, std::array<dou
 
 void OrbitComputation::minimizeDX(std::vector<Section>& sections){
     std::cout << "patching...\n";
+	const double threshold = 1;
     const uint_fast16_t nSections = sections.size(); 
-    for(int iter = 0; iter < 20; iter++){
+	std::vector<bool> completed(nSections,false);
+	int completedCount = 0;
+    for(int iter = 0; iter < 30; iter++){
         std::cout << "Iteration: " << iter << std::endl;
 
         for (uint_fast16_t sId = 0; sId < nSections - 1; sId++) {
-            sections[sId].target(sections[sId+1].initial_state);
+
+			if(completed[sId]){
+				continue;
+			}
+
+            double dist = sections[sId].target(sections[sId+1].initial_state);
+
+			if(dist < threshold){
+				completed[sId] = true;
+				completedCount++;
+			}
         }
+
+		std::cout << "Completed: " << completedCount << std::endl;
 
         for (uint_fast16_t sId = 1; sId < nSections; sId++) {
             sections[sId].t_start = sections[sId-1].t_final;
         }
+
+		if(completedCount == nSections) {
+			break;
+		}
     }
-	
-	
+
 	std::cout << "patched.\n";
 }
 
@@ -252,12 +278,12 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	std::cout << "Minimizing..." << std::endl;
 	
 	// Recompute STMS, might not be necessary
-	/*
+	
 	for (uint_fast16_t section = 0; section < nSections; section++) {
 		sections[section].compute_states();
 		sections[section].compute_STM();
 	}
-	*/
+	
 	
 	Matrix<3,3> Apf;
 	Matrix<3,3> Bpf;
@@ -416,7 +442,7 @@ void OrbitComputation::run_full_emphemeris(const int& nSections, const double& j
 
 		
 		CR3BP cr3bp = CR3BP(OrbitalElements::EARTH_MU,OrbitalElements::MOON_MU,sma);
-		sections[section].initial_state = OrbitalDynamics::convert(&cr3bp, dynamics, cr3bp.get_halo_initial_state_3rd_order(10000,0,T,1),jd);
+		sections[section].initial_state = OrbitalDynamics::convert_cr3bp_to_inertial(dynamics, cr3bp.get_halo_initial_state_3rd_order(10000,0,T,1),jd);
 		sections[section].t_start = T;
 		T += dT;
 		sections[section].t_final = T;

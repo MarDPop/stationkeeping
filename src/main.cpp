@@ -8,7 +8,7 @@
 #include <array>
 #include <iomanip>
 
-void printSections(const std::vector<Section>& sections){
+void printSections(const std::vector<Section>& sections, std::string suffix){
 
 	if(sections.size() < 1){
 		return;
@@ -18,7 +18,7 @@ void printSections(const std::vector<Section>& sections){
 	const double jd0 = dynamics->getJD0();
 	for(int i = 0; i < sections.size(); i++){
 		const Recording<6>& recording = sections[i].ode.recording;
-		Util::printOut(recording,"output/section_inertial_" + std::to_string(i));
+		Util::printOut(recording,"output/section_inertial_" + std::to_string(i) + "_" + suffix);
 		std::vector< double > jds;
 		std::vector< std::array<double,3> > rotating_positions;
 
@@ -37,7 +37,7 @@ void printSections(const std::vector<Section>& sections){
 			rotating_positions.push_back(r_L1);
 		}
 
-		Util::printOut(jds,rotating_positions,"output/section_rotating_" + std::to_string(i));
+		Util::printOut(jds,rotating_positions,"output/section_rotating_" + std::to_string(i) + "_" +suffix);
 	}
 }
 
@@ -100,7 +100,8 @@ void test(const int& nSections, const double& jd, const double& Az) {
 	for(int i = 0; i < nSections; i++){
 		double t = fmod(time, period) * cr3bp->mean_motion;
 		double jdi = jd + time/Util::JULIAN_DAY;
-		sections[i].initial_state = OrbitalDynamics::convert(cr3bp,EMS,orbit.get(t),jdi);
+		sections[i].initial_state = OrbitalDynamics::convert_cr3bp_to_inertial(EMS,orbit.get(t),jdi);
+	
 		sections[i].t_start = time;
 		time += dt;
 		sections[i].t_final = time;
@@ -108,7 +109,17 @@ void test(const int& nSections, const double& jd, const double& Az) {
 	}
 
 	std::cout << "Printing initial sections." << std::endl;
-	printSections(sections);
+	printSections(sections,"orig");
+
+	OrbitComputation::minimizeDX(sections);
+
+	printSections(sections,"pass1");
+
+	OrbitComputation::minimizeDV(sections);
+
+	OrbitComputation::minimizeDX(sections);
+
+	printSections(sections,"pass2");
 
 }
 

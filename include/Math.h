@@ -23,6 +23,10 @@ namespace Math {
 	inline double dot(const std::array<double,3>& u, const std::array<double,3>& v) {
 		return u[0]*v[0] + u[1]*v[1] + u[2]*v[2];
 	}
+
+    inline double norm(const std::array<double,3>& u) {
+        return sqrt(u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
+    }
 	
 	inline std::array<double,3> cross(const std::array<double,3>& u, const std::array<double,3>& v) {
 		std::array<double,3> w = {u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]};
