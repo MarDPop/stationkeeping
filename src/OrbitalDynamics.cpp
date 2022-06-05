@@ -50,12 +50,13 @@ std::array<double,6> OrbitalDynamics::convert_cr3bp_to_inertial(EarthMoonSun* dy
     std::array<double,3> r_earth = dynamics->earth->getPos(jd);
     std::array<double,3> x = {r_moon[0] - r_earth[0],r_moon[1] - r_earth[1],r_moon[2] - r_earth[2]};
     
-    std::array<double,3> v_earth = dynamics->earth->getVel(jd);
-    std::array<double,3> h_earth = Math::cross(r_earth,v_earth);
-    std::array<double,3> v_moon = dynamics->moon->getVel(jd);
-    std::array<double,3> h_moon = Math::cross(r_moon,v_moon);
-    
-    std::array<double,3> z = {h_earth[0] + h_moon[0],h_earth[1] + h_moon[1],h_earth[2] + h_moon[2]};
+    const double djd = 0.0005;
+	
+	std::array<double,3> r_moon_2 = dynamics->moon->getPos(jd + djd);
+	std::array<double,3> r_earth_2 = dynamics->earth->getPos(jd + djd);
+	std::array<double,3> x2 = {r_moon_2[0] - r_earth_2[0], r_moon_2[1] - r_earth_2[1],r_moon_2[2] - r_earth_2[2]};
+
+    std::array<double,3> z = Math::cross(x,x2);
     double z_mag = sqrt(z[0]*z[0] + z[1]*z[1] + z[2]*z[2]);
     double sma = sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
     for(int i = 0;i < 3; i++) {
@@ -68,14 +69,8 @@ std::array<double,6> OrbitalDynamics::convert_cr3bp_to_inertial(EarthMoonSun* dy
     
     std::array<double,6> state = cr3bp.convert_state_to_inertial(state_cr3bp);
 
-    const double djd = 0.0005;
-	
-	std::array<double,3> r_moon_2 = dynamics->moon->getPos(jd + djd);
-	std::array<double,3> r_earth_2 = dynamics->earth->getPos(jd + djd);
-	std::array<double,3> sma_2 = {r_moon_2[0] - r_earth_2[0], r_moon_2[1] - r_earth_2[1],r_moon_2[2] - r_earth_2[2]};
-	
 	double dt = djd*Util::JULIAN_DAY;
-	double dL1dt = (Math::norm(sma_2) - sma)/dt;
+	double dL1dt = (Math::norm(x2) - sma)/dt;
 	
 	std::array< std::array<double,3>, 3> CST = {{{x[0],y[0],z[0]},{x[1],y[1],z[1]},{x[2],y[2],z[2]}}};
 	

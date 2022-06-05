@@ -274,7 +274,7 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	std::cout << "Minimizing..." << std::endl;
 	
 	// Recompute STMS, might not be necessary
-	
+	EarthMoonSun* dynamics = sections[0].dynamics;
 	for (uint_fast16_t section = 0; section < nSections; section++) {
 		sections[section].compute_states();
 		sections[section].compute_STM();
@@ -283,12 +283,8 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	
 	Matrix<3,3> Apf;
 	Matrix<3,3> Bpf;
-	Matrix<3,3> Cpf;
-	Matrix<3,3> Dpf;
 	Matrix<3,3> Ap0;
 	Matrix<3,3> Bp0;
-	Matrix<3,3> Cp0;
-	Matrix<3,3> Dp0;
 	Matrix<3,3> M0;
 	Vector<3> Mt0;
 	Matrix<3,3> Mp;
@@ -296,73 +292,79 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	Matrix<3,3> Mf;
 	Vector<3> Mtf;
 	
+	Vector<3> v_back;
 	Vector<3> vp_back;
 	Vector<3> vp_front;
 	Vector<3> ap_back;
 	Vector<3> ap_front;
+	Vector<3> v_front;
 	
-	MatrixX M(3*nSections-3, 4*nSections + 4,(char)0);
+	MatrixX M(3*nSections-6, 4*nSections + 4,(char)0);
 	MatrixX dvp(M.nRows,1);
 	MatrixX dr(M.nCols,1);
 	MatrixX dv(nSections-1,1);
 		
-	for (uint_fast16_t section = 0; section < nSections-1; section++) {
-		uint_fast16_t colStart = section*4;
-		uint_fast16_t rowStart = section*3;
+	for (uint_fast16_t section = 1; section < nSections-1; section++) {
+		uint_fast16_t idx_back = section-1;
+
+		uint_fast16_t colStart = idx_back*4;
+		uint_fast16_t rowStart = idx_back*3;
 		
-		Ap0 = sections[section].STM.slice<3,3>(0,0);
-		Bp0 = sections[section].STM.slice<3,3>(0,3);
-		Cp0 = sections[section].STM.slice<3,3>(3,0);
-		Dp0 = sections[section].STM.slice<3,3>(3,3);
+		Ap0 = sections[idx_back].STM.slice<3,3>(0,0);
+		Bp0 = MatrixX::invert(sections[idx_back].STM.slice<3,3>(0,3));
 		
-		Matrix<6,6> STM_front(sections[section+1].STM);
+		Matrix<6,6> STM_front(sections[section].STM);
 		Matrix<6,6> STM_reverse = MatrixX::LUPInvert(STM_front);
 		
 		Apf = STM_reverse.slice<3,3>(0,0);
-		Bpf = STM_reverse.slice<3,3>(0,3);
-		Cpf = STM_reverse.slice<3,3>(3,0);
-		Dpf = STM_reverse.slice<3,3>(3,3);
+		Bpf = MatrixX::invert(STM_reverse.slice<3,3>(0,3));
 
-		const std::array<double,6>& x_back  = sections[section].dynamics->get_state_rate(sections[section].states.back(), sections[section].times.back());
-		const std::array<double,6>& x_front = sections[section+1].dynamics->get_state_rate(sections[section+1].initial_state, sections[section+1].t_start);
-		
-		dvp.data[rowStart] = (x_front[0] - x_back[0]);
-		dvp.data[rowStart+1] = (x_front[1] - x_back[1]);
-		dvp.data[rowStart+2] = (x_front[2] - x_back[2]);
+		const std::array<double,6>& x_back = sections[idx_back].states.back();
+		const std::array<double,6>& xp_back  = dynamics->get_state_rate(sections[idx_back].states.back(), sections[idx_back].times.back());
+		const std::array<double,6>& xp_front = dynamics->get_state_rate(sections[section].initial_state, sections[section].t_start);
+		const std::array<double,6>& x_front = sections[section+1].initial_state;
+
+		dvp.data[rowStart] = (xp_front[0] - xp_back[0]);
+		dvp.data[rowStart+1] = (xp_front[1] - xp_back[1]);
+		dvp.data[rowStart+2] = (xp_front[2] - xp_back[2]);
 
 		for(uint_fast8_t i = 0; i < 3; i++){
-			vp_back[i] = x_back[i];
-			vp_front[i] = x_front[i];
-			ap_back[i] = x_back[i+3];
-			ap_front[i] = x_front[i+3];
+			v_back[i] = x_back[i+3];
+			vp_back[i] = xp_back[i];
+			vp_front[i] = xp_front[i];
+			v_front[i] = x_front[i+3];
+			ap_back[i] = xp_back[i+3];
+			ap_front[i] = xp_front[i+3];
 		}
 
-		const Matrix<3,3>& tmp0 = Dp0*MatrixX::invert(Bp0);
-		const Matrix<3,3>& tmpf = Dpf*MatrixX::invert(Bpf);
+		const Matrix<3,3>& tmp0 = Bp0*Ap0;
+		const Matrix<3,3>& tmpf = Bpf*Apf;
 		
-		M0 = tmp0*Ap0 - Cp0;
-		Mt0 = ap_back - tmp0*vp_back;
+		Mt0 = Bp0*v_back;
 
-		Mf = Cpf - tmpf*Apf;
-		Mtf = tmpf*vp_front - ap_front;
-		
-		for(uint_fast8_t i = 0; i < 3; i++){
-			Mtp.data[i] = - Mt0.data[i] - Mtf.data[i];				
-		}
+		Mtf = Bpf*v_front;
+
 		for(uint_fast8_t i = 0; i < 9; i++){
-			Mp.data[i] = tmpf.data[i] - tmp0.data[i];
+			Mp.data[i] = tmp0.data[i] - tmpf.data[i];
+		}
+
+		const Vector<3>& v0 = tmp0*vp_back;
+		const Vector<3>& vf = tmpf*vp_front;
+
+		for(uint_fast8_t i = 0; i < 3; i++){
+			Mtp.data[i] = vf.data[i] - v0.data[i] + ap_front.data[i] - ap_back.data[i];				
 		}
 
 		for(uint_fast8_t i = 0; i < 3; i++){
 			double* row = M[rowStart + i];
 			for(uint_fast8_t j = 0; j < 3; j++){
-				row[colStart + j] = M0[i][j];
+				row[colStart + j] = -Bp0[i][j];
 				row[colStart + 4 + j] = Mp[i][j];
-				row[colStart + 8 + j] = Mf[i][j];
+				row[colStart + 8 + j] = Bpf[i][j];
 			}
 			row[colStart + 3] = Mt0(i);
 			row[colStart + 7] = Mtp(i);
-			row[colStart + 11] = Mtf(i);
+			row[colStart + 11] = -Mtf(i);
 		}
 	}
 	
@@ -380,9 +382,9 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	for (uint_fast16_t section = 0; section < nSections; section++) {
 		uint_fast16_t col = section*4;
 		for(uint_fast8_t i = 0; i < 3; i++){
-			sections[section].initial_state[i] -= dr.data[col + i];
+			sections[section].initial_state[i] -= 0.2*dr.data[col + i];
 		}
-		sections[section].t_start -= 0.5*dr.data[col + 3];
+		sections[section].t_start -= 0.2*dr.data[col + 3];
 	}
 	// double check times
 	for (uint_fast16_t section = 0; section < nSections-1; section++) {
