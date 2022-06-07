@@ -57,6 +57,8 @@ public:
 
 	static void minimizeDV2(std::vector<Section>& sections);
 
+	static void minimizeDV3(std::vector<Section>& sections);
+
     static void smooth(std::vector<Section>& sections);
 
     static double calcDV(std::vector<Section>& sections);

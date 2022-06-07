@@ -509,6 +509,128 @@ void OrbitComputation::minimizeDV2(std::vector<Section>& sections){
 	}	
 }
 
+void OrbitComputation::minimizeDV3(std::vector<Section>& sections){
+    const uint_fast16_t nSections = sections.size();
+	std::cout << "Minimizing..." << std::endl;
+	
+	// Recompute STMS, might not be necessary
+	EarthMoonSun* dynamics = sections[0].dynamics;
+	for (uint_fast16_t section = 0; section < nSections; section++) {
+		sections[section].compute_states();
+		sections[section].compute_STM();
+	}
+	
+	Matrix<3,3> Apf;
+	Matrix<3,3> Bpf;
+	Matrix<3,3> Ap0;
+	Matrix<3,3> Bp0;
+	Matrix<3,3> M0;
+	Vector<3> Mt0;
+	Matrix<3,3> Mp;
+	Vector<3> Mtp;
+	Matrix<3,3> Mf;
+	Vector<3> Mtf;
+	
+	Vector<3> v_back;
+	Vector<3> vp_back;
+	Vector<3> vp_front;
+	Vector<3> ap_back;
+	Vector<3> ap_front;
+	Vector<3> v_front;
+	
+	Eigen::MatrixXd M(3*nSections-6, 4*nSections + 4);
+	M.setZero();
+	Eigen::VectorXd dvp(3*nSections-6);
+	//Eigen::VectorXd dr(4*nSections + 4);
+		
+	for (uint_fast16_t section = 1; section < nSections-1; section++) {
+		uint_fast16_t idx_back = section-1;
+
+		uint_fast16_t colStart = idx_back*4;
+		uint_fast16_t rowStart = idx_back*3;
+
+		Matrix<6,6> STM_back(sections[idx_back].STM);
+		
+		Ap0 = STM_back.slice<3,3>(0,0);
+		Bp0 = MatrixX::invert(STM_back.slice<3,3>(0,3));
+		
+		Matrix<6,6> STM_front(sections[section].STM);
+		STM_front = MatrixX::LUPInvert(STM_front);
+		
+		Apf = STM_front.slice<3,3>(0,0);
+		Bpf = MatrixX::invert(STM_front.slice<3,3>(0,3));
+
+		const std::array<double,6>& x_back = sections[idx_back].initial_state;
+		const std::array<double,6>& xp_back  = dynamics->get_state_rate(sections[idx_back].states.back(), sections[idx_back].times.back());
+		const std::array<double,6>& xp_front = dynamics->get_state_rate(sections[section].initial_state, sections[section].t_start);
+		const std::array<double,6>& x_front = sections[section].states.back();
+
+		dvp(rowStart) = (xp_front[0] - xp_back[0]);
+		dvp(rowStart+1)= (xp_front[1] - xp_back[1]);
+		dvp(rowStart+2) = (xp_front[2] - xp_back[2]);
+
+		for(uint_fast8_t i = 0; i < 3; i++){
+			v_back[i] = x_back[i+3];
+			vp_back[i] = xp_back[i];
+			vp_front[i] = xp_front[i];
+			v_front[i] = x_front[i+3];
+			ap_back[i] = xp_back[i+3];
+			ap_front[i] = xp_front[i+3];
+		}
+
+		const Matrix<3,3>& tmp0 = Bp0*Ap0;
+		const Matrix<3,3>& tmpf = Bpf*Apf;
+		
+		Mt0 = Bp0*v_back;
+
+		Mtf = Bpf*v_front;
+
+		for(uint_fast8_t i = 0; i < 9; i++){
+			Mp.data[i] = tmp0.data[i] - tmpf.data[i];
+		}
+
+		const Vector<3>& v0 = tmp0*vp_back;
+		const Vector<3>& vf = tmpf*vp_front;
+
+		for(uint_fast8_t i = 0; i < 3; i++){
+			Mtp.data[i] = vf.data[i] - v0.data[i] + ap_front.data[i] - ap_back.data[i];				
+		}
+
+		for(uint_fast8_t i = 0; i < 3; i++){
+			int row = rowStart + i;
+			for(uint_fast8_t j = 0; j < 3; j++){
+				M(row,colStart + j) = -Bp0[i][j];
+				M(row,colStart + 4 + j) = Mp[i][j];
+				M(row,colStart + 8 + j) = Bpf[i][j];
+			}
+			M(row,colStart + 3) = Mt0(i);
+			M(row,colStart + 7) = Mtp(i);
+			M(row,colStart + 11) = -Mtf(i);
+		}
+	}
+
+	Eigen::MatrixXd MT = M.transpose();
+	Eigen::MatrixXd MMT = M*MT;
+	Eigen::VectorXd dr = MT*(MMT.partialPivLu().solve(dvp));
+
+	for (uint_fast16_t section = 0; section < nSections; section++) {
+		uint_fast16_t col = section*4;
+		for(uint_fast8_t i = 0; i < 3; i++){
+			sections[section].initial_state[i] -= 0.25*dr(col + i);
+		}
+		sections[section].t_start -= 0.1*dr(col + 3);
+	}
+	// double check times
+	for (uint_fast16_t section = 0; section < nSections-1; section++) {
+		sections[section].t_final = sections[section+1].t_start;
+	}	
+
+	for (uint_fast16_t section = 0; section < nSections; section++) {
+		sections[section].compute_states();
+		sections[section].compute_STM();
+	}
+}
+
 void OrbitComputation::smooth(std::vector<Section>& sections){
     
 }

@@ -115,14 +115,21 @@ void test(const int& nSections, const double& jd, const double& Az) {
 
 	printSections(sections,"minDx");
 
-	OrbitComputation::minimizeDV2(sections);
+	try {
+
+		OrbitComputation::minimizeDV3(sections);
+
+	} catch ( const char* e) {
+		std::cerr << e << std::endl;
+		return;
+	}
 
 	printSections(sections,"minDv");
 
 	OrbitComputation::minimizeDX(sections);
 
 	for ( int i = 0; i < 5; i++) {
-		OrbitComputation::minimizeDV2(sections);
+		OrbitComputation::minimizeDV3(sections);
 
 		OrbitComputation::minimizeDX(sections);
 	}
