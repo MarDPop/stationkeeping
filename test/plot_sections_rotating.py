@@ -12,7 +12,7 @@ fig = plt.figure()
 ax3d = plt.axes(projection='3d')
 
 for i in range(30):
-    f = open("../output/section_rotating_" + str(i) + "_pass2", "r")
+    f = open("../output/section_rotating_" + str(i) + "_minDv", "r")
     data = f.readlines()
 
     X = []

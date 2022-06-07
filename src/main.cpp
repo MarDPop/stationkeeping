@@ -113,13 +113,21 @@ void test(const int& nSections, const double& jd, const double& Az) {
 
 	OrbitComputation::minimizeDX(sections);
 
-	printSections(sections,"pass1");
+	printSections(sections,"minDx");
 
-	OrbitComputation::minimizeDV(sections);
+	OrbitComputation::minimizeDV2(sections);
+
+	printSections(sections,"minDv");
 
 	OrbitComputation::minimizeDX(sections);
 
-	printSections(sections,"pass2");
+	for ( int i = 0; i < 5; i++) {
+		OrbitComputation::minimizeDV2(sections);
+
+		OrbitComputation::minimizeDX(sections);
+	}
+
+	printSections(sections,"pass_final");
 
 }
 

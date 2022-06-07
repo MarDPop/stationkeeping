@@ -4,6 +4,8 @@
 #include "../include/OrbitalDynamics.h"
 #include "../include/OrbitalElements.h"
 
+#include "../lib/Eigen/Dense"
+
 #define MAX_HALO_ITERATIONS 10
 
 const double Section::SECTION_DAYS = 1;
@@ -280,7 +282,6 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 		sections[section].compute_STM();
 	}
 	
-	
 	Matrix<3,3> Apf;
 	Matrix<3,3> Bpf;
 	Matrix<3,3> Ap0;
@@ -302,27 +303,28 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	MatrixX M(3*nSections-6, 4*nSections + 4,(char)0);
 	MatrixX dvp(M.nRows,1);
 	MatrixX dr(M.nCols,1);
-	MatrixX dv(nSections-1,1);
 		
 	for (uint_fast16_t section = 1; section < nSections-1; section++) {
 		uint_fast16_t idx_back = section-1;
 
 		uint_fast16_t colStart = idx_back*4;
 		uint_fast16_t rowStart = idx_back*3;
+
+		Matrix<6,6> STM_back(sections[idx_back].STM);
 		
-		Ap0 = sections[idx_back].STM.slice<3,3>(0,0);
-		Bp0 = MatrixX::invert(sections[idx_back].STM.slice<3,3>(0,3));
+		Ap0 = STM_back.slice<3,3>(0,0);
+		Bp0 = MatrixX::invert(STM_back.slice<3,3>(0,3));
 		
 		Matrix<6,6> STM_front(sections[section].STM);
-		Matrix<6,6> STM_reverse = MatrixX::LUPInvert(STM_front);
+		STM_front = MatrixX::LUPInvert(STM_front);
 		
-		Apf = STM_reverse.slice<3,3>(0,0);
-		Bpf = MatrixX::invert(STM_reverse.slice<3,3>(0,3));
+		Apf = STM_front.slice<3,3>(0,0);
+		Bpf = MatrixX::invert(STM_front.slice<3,3>(0,3));
 
-		const std::array<double,6>& x_back = sections[idx_back].states.back();
+		const std::array<double,6>& x_back = sections[idx_back].initial_state;
 		const std::array<double,6>& xp_back  = dynamics->get_state_rate(sections[idx_back].states.back(), sections[idx_back].times.back());
 		const std::array<double,6>& xp_front = dynamics->get_state_rate(sections[section].initial_state, sections[section].t_start);
-		const std::array<double,6>& x_front = sections[section+1].initial_state;
+		const std::array<double,6>& x_front = sections[section].states.back();
 
 		dvp.data[rowStart] = (xp_front[0] - xp_back[0]);
 		dvp.data[rowStart+1] = (xp_front[1] - xp_back[1]);
@@ -382,16 +384,130 @@ void OrbitComputation::minimizeDV(std::vector<Section>& sections){
 	for (uint_fast16_t section = 0; section < nSections; section++) {
 		uint_fast16_t col = section*4;
 		for(uint_fast8_t i = 0; i < 3; i++){
-			sections[section].initial_state[i] -= 0.2*dr.data[col + i];
+			sections[section].initial_state[i] -= 0.5*dr.data[col + i];
 		}
-		sections[section].t_start -= 0.2*dr.data[col + 3];
+		sections[section].t_start -= 0.1*dr.data[col + 3];
 	}
 	// double check times
 	for (uint_fast16_t section = 0; section < nSections-1; section++) {
 		sections[section].t_final = sections[section+1].t_start;
 	}	
+
+	for (uint_fast16_t section = 0; section < nSections; section++) {
+		sections[section].compute_states();
+		sections[section].compute_STM();
+	}
 }
 
+
+void OrbitComputation::minimizeDV2(std::vector<Section>& sections){
+    const uint_fast16_t nSections = sections.size();
+	std::cout << "Minimizing..." << std::endl;
+	
+	
+
+	Matrix<3,3> dVdR0;
+	Vector<3> dVdT0;
+	Matrix<3,3> dVdV0;
+	Vector<3> dVdT;
+	
+	Vector<3> vp_back;
+	Vector<3> vp_front;
+	
+	Eigen::MatrixXd M(3*nSections-3, 7*nSections);
+	Eigen::VectorXd dvp(3*nSections-3);
+	Eigen::VectorXd dr(7*nSections);
+
+	M.setZero();
+
+	const double DX = 1;
+	const double DV = 0.0001;
+	const double DT = 60;
+		
+	for (uint_fast16_t section = 1; section < nSections; section++) {
+		uint_fast16_t idx_back = section-1;
+
+		uint_fast16_t colStart = idx_back*7;
+		uint_fast16_t rowStart = idx_back*3;
+
+		std::array<double,6> xp_back  = sections[idx_back].states.back();
+		std::array<double,6> xp_front = sections[section].initial_state;
+
+		dvp(rowStart) = (xp_front[3] - xp_back[3]);
+		dvp(rowStart+1) = (xp_front[4] - xp_back[4]);
+		dvp(rowStart+2) = (xp_front[5] - xp_back[6]);
+
+		for(int i = 0; i < 3; i++){
+			sections[idx_back].initial_state[i] += DX;
+			sections[idx_back].compute_states();
+			sections[idx_back].initial_state[i] -= DX;
+			const std::array<double,6>& x_back  = sections[idx_back].states.back();
+			for(int j = 0; j < 3;j++){
+				dVdR0[j][i] = (x_back[3+j] - xp_back[3+j])/DX;
+			}
+		}
+
+		for(int i = 0; i < 3; i++){
+			sections[idx_back].initial_state[3+i] += DV;
+			sections[idx_back].compute_states();
+			sections[idx_back].initial_state[3+i] -= DV;
+			const std::array<double,6>& x_back  = sections[idx_back].states.back();
+			for(int j = 0; j < 3;j++){
+				dVdV0[j][i] = (x_back[3+j] - xp_back[3+j])/DV;
+			}
+		}
+
+		sections[idx_back].t_start += DT;
+		sections[idx_back].compute_states();
+		sections[idx_back].t_start -= DT;
+		const std::array<double,6>& x_back  = sections[idx_back].states.back();
+		for(int j = 0; j < 3;j++){
+			dVdT0.data[j] = (x_back[3+j] - xp_back[3+j])/DT;
+		}
+
+		sections[idx_back].t_final += DT;
+		sections[idx_back].compute_states();
+		sections[idx_back].t_final -= DT;
+		const std::array<double,6>& x_back2  = sections[idx_back].states.back();
+		for(int j = 0; j < 3;j++){
+			dVdT.data[j] = (x_back2[3+j] - xp_back[3+j])/DT;
+		}
+
+		for(uint_fast8_t i = 0; i < 3; i++){
+			int row = rowStart + i;
+			for(uint_fast8_t j = 0; j < 3; j++){
+				M(row,colStart + j) = dVdR0[i][j];
+				M(row,colStart + 3 + j) = dVdV0[i][j];
+			}
+			M(row,colStart + 10 + i) = 1;
+			M(row,colStart + 6) = dVdT0(i);
+			M(row,colStart + 13) = dVdT(i);
+		}
+	}
+
+	dr = M.colPivHouseholderQr().solve(dvp);
+
+	for (uint_fast16_t section = 0; section < nSections; section++) {
+		uint_fast16_t col = section*7;
+		for(uint_fast8_t i = 0; i < 6; i++){
+			sections[section].initial_state[i] += 1*dr(col + i);
+		}
+		sections[section].t_start += 0.5*dr(col + 6);
+	}
+
+	for(int i = 0; i < nSections*7;i++){
+		std::cout << dr(i) << std::endl;
+	}
+
+	// double check times
+	for (uint_fast16_t section = 0; section < nSections-1; section++) {
+		sections[section].t_final = sections[section+1].t_start;
+	}
+
+	for (uint_fast16_t section = 0; section < nSections; section++) {
+		sections[section].compute_states();
+	}	
+}
 
 void OrbitComputation::smooth(std::vector<Section>& sections){
     

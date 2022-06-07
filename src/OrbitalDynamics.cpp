@@ -50,7 +50,7 @@ std::array<double,6> OrbitalDynamics::convert_cr3bp_to_inertial(EarthMoonSun* dy
     std::array<double,3> r_earth = dynamics->earth->getPos(jd);
     std::array<double,3> x = {r_moon[0] - r_earth[0],r_moon[1] - r_earth[1],r_moon[2] - r_earth[2]};
     
-    const double djd = 0.0005;
+    const double djd = 0.001;
 	
 	std::array<double,3> r_moon_2 = dynamics->moon->getPos(jd + djd);
 	std::array<double,3> r_earth_2 = dynamics->earth->getPos(jd + djd);
