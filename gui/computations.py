@@ -12,7 +12,7 @@ def DC(x0,max_iterations,tol,sma):
     tol /= f
     
     # dt
-    dt = 5e-6
+    dt = 2e-5
     dtSTM = 0.001
     # RK Constants
     dt2 = dt/2
